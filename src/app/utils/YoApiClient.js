@@ -104,7 +104,7 @@ export function fetchAllNotifications(username) {
  * @param {String} username
  * @param {String} [before] created prior to timestamp, formatted like 2017-10-12T21:25:06.964364
  * @param {String} [after] modified after timestamp, formatted like 2017-10-12T21:25:06.964364
- * @param {String[]} types only these notification types
+ * @param {String[]} [filterTypes] only these notification types
  *
  */
 export function fetchSomeNotifications({ username, before, after, filterTypes }) { // Todo: filter by types once api allows for it

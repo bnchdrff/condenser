@@ -43,14 +43,14 @@ export function getTimestamp(direction, filteredNotifs) {
     return (direction === 'before') ? filteredNotifs.last().created : filteredNotifs.sortBy(n => n.updated).last().updated;
 }
 
-function delay(millis) {
+export function delay(millis) {
     const promise = new Promise(resolve => {
         setTimeout(() => resolve(true), millis);
     });
     return promise;
 }
 
-function* pollNotifications() {
+export function* pollNotifications() {
     try {
         yield call(delay, POLL_WAIT_MS);
         yield put({
@@ -76,77 +76,73 @@ function* watchPollData() {
             'notification/APPEND_SOME', // or after one of the polls are done
         ]);
 
-        const idsReadPending = yield select(getIdsReadPending);
-        const idsUnreadPending = yield select(getIdsUnreadPending);
-        const idsShownPending = yield select(getIdsShownPending);
-
-        if (idsReadPending.count() > 0) {
-            const payload = yield call(markAsRead, idsReadPending.toArray());
-
-            if (payload.error) {
-                yield put({
-                    type: 'notification/SENT_UPDATES_ERROR',
-                    msg: payload.error,
-                });
-            } else {
-                yield put({
-                    type: 'notification/SENT_UPDATES',
-                    updates: { read: true },
-                });
-
-                yield put({
-                    type: 'notification/APPEND_SOME',
-                    payload,
-                });
-            }
-        }
-
-        if (idsUnreadPending.count() > 0) {
-            const payload = yield call(markAsUnread, idsUnreadPending.toArray());
-
-            if (payload.error) {
-                yield put({
-                    type: 'notification/SENT_UPDATES_ERROR',
-                    msg: payload.error,
-                });
-            } else {
-                yield put({
-                    type: 'notification/SENT_UPDATES',
-                    updates: { read: false },
-                });
-
-                yield put({
-                    type: 'notification/APPEND_SOME',
-                    payload,
-                });
-            }
-        }
-
-        if (idsShownPending.count() > 0) {
-            const payload = yield call(markAsShown, idsShownPending.toArray());
-
-            if (payload.error) {
-                yield put({
-                    type: 'notification/SENT_UPDATES_ERROR',
-                    msg: payload.error,
-                });
-            } else {
-                yield put({
-                    type: 'notification/SENT_UPDATES',
-                    updates: { shown: true },
-                });
-
-                yield put({
-                    type: 'notification/APPEND_SOME',
-                    payload,
-                });
-            }
-        }
+        [
+            {
+                accessor: getIdsReadPending,
+                yoApiCall: markAsRead,
+                sentUpdates: {
+                    read: true,
+                },
+            },
+            {
+                accessor: getIdsUnreadPending,
+                yoApiCall: markAsUnread,
+                sentUpdates: {
+                    read: false,
+                },
+            },
+            {
+                accessor: getIdsShownPending,
+                yoApiCall: markAsShown,
+                sentUpdates: {
+                    shown: true,
+                },
+            },
+        ]
+        .map(processUpdateQueue);
 
         yield race([
             call(pollNotifications), // and then queue up
             take('user/LOGOUT'), // or quit if they log out
         ]);
+    }
+}
+
+/**
+ * Handle pending updates:
+ * For each type of update,
+ * we find out which IDs are pending,
+ * take an action to send the updates to the API,
+ * remove the updated items from the queue,
+ * and update the state with changed items returned from the API.
+ *
+ * @param {Object} updates
+ * @param {Function} updates.accessor
+ * @param {Function} updates.yoApiCall
+ * @param {Function} updates.sentUpdates
+ */
+export function* processUpdateQueue({ accessor, yoApiCall, sentUpdates }) {
+    const idsPending = yield select(accessor);
+
+    if (idsPending.count() > 0) {
+        const payload = yield call(yoApiCall, idsPending.toArray());
+
+        if (payload.error) {
+            yield put({
+                type: 'notification/SENT_UPDATES_ERROR',
+                msg: payload.error,
+            });
+        } else {
+            yield put({
+                type: 'notification/SENT_UPDATES',
+                updates: sentUpdates,
+            });
+
+            yield put({
+                type: 'notification/APPEND_SOME',
+                payload,
+            });
+        }
     }
 }
 
