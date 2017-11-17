@@ -1,0 +1,4206 @@
+diff --git a/package.json b/package.json
+index d07e6ad..3ecb866 100644
+--- a/package.json
++++ b/package.json
+@@ -117,7 +117,6 @@
+     "react-timeago": "^3.1.2",
+     "redux": "^3.3.1",
+     "redux-form": "5.3.4",
+-    "redux-modules": "0.0.5",
+     "redux-saga": "^0.9.5",
+     "remarkable": "^1.7.1",
+     "sanitize-html": "^1.11.4",
+diff --git a/src/app/components/App.jsx b/src/app/components/App.jsx
+index 78741a1..adea1a1 100644
+--- a/src/app/components/App.jsx
++++ b/src/app/components/App.jsx
+@@ -3,8 +3,6 @@ import {connect} from 'react-redux';
+ import AppPropTypes from 'app/utils/AppPropTypes';
+ import Header from 'app/components/modules/Header';
+ import LpFooter from 'app/components/modules/lp/LpFooter';
+-import user from 'app/redux/User';
+-import g from 'app/redux/GlobalReducer';
+ import TopRightMenu from 'app/components/modules/TopRightMenu';
+ import { browserHistory } from 'react-router';
+ import classNames from 'classnames';
+@@ -330,12 +328,11 @@ export default connect(
+     },
+     dispatch => ({
+         loginUser: () =>
+-            dispatch(user.actions.usernamePasswordLogin()),
++            dispatch({type: 'user/USERNAME_PASSWORD_LOGIN', payload: {}}),
+         depositSteem: (username) => {
+             const new_window = window.open();
+             new_window.opener = null;
+             new_window.location = 'https://blocktrades.us/?input_coin_type=btc&output_coin_type=steem&receive_address=' + username;
+-            //dispatch(g.actions.showDialog({name: 'blocktrades_deposit', params: {outputCoinType: 'VESTS'}}));
+         },
+     })
+ )(App);
+\ No newline at end of file
+diff --git a/src/app/components/cards/CardView.js b/src/app/components/cards/CardView.js
+index d05d187..29baf26 100644
+--- a/src/app/components/cards/CardView.js
++++ b/src/app/components/cards/CardView.js
+@@ -1,7 +1,6 @@
+ import React from 'react';
+ import {connect} from 'react-redux'
+ import Link from 'app/components/elements/Link'
+-import g from 'app/redux/GlobalReducer'
+ import links from 'app/utils/Links'
+ import tt from 'counterpart';
+ 
+@@ -67,7 +66,7 @@ export default connect(
+     },
+     dispatch => ({
+         clearMetaElement: (formId, element) => {
+-            dispatch(g.actions.clearMetaElement({formId, element}))
++            dispatch({type: 'global/CLEAR_META_ELEMENT', payload: {formId, element}})
+         }
+     })
+ )(CardView)
+diff --git a/src/app/components/cards/Comment.jsx b/src/app/components/cards/Comment.jsx
+index b26d718..28adeca 100644
+--- a/src/app/components/cards/Comment.jsx
++++ b/src/app/components/cards/Comment.jsx
+@@ -6,11 +6,8 @@ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate'
+ import Voting from 'app/components/elements/Voting';
+ import { connect } from 'react-redux';
+ import { Link } from 'react-router';
+-import user from 'app/redux/User';
+ import TimeAgoWrapper from 'app/components/elements/TimeAgoWrapper';
+ import Userpic from 'app/components/elements/Userpic';
+-import transaction from 'app/redux/Transaction'
+-import {List} from 'immutable'
+ import tt from 'counterpart';
+ import {parsePayoutAmount} from 'app/utils/ParsersAndFormatters';
+ import {Long} from 'bytebuffer';
+@@ -412,13 +409,13 @@ const Comment = connect(
+ 
+     // mapDispatchToProps
+     dispatch => ({
+-        unlock: () => { dispatch(user.actions.showLogin()) },
++        unlock: () => { dispatch({type: 'user/SHOW_LOGIN'}) },
+         deletePost: (author, permlink) => {
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'delete_comment',
+                 operation: {author, permlink},
+                 confirm: tt('g.are_you_sure'),
+-            }))
++            }})
+         },
+     })
+ )(CommentImpl)
+diff --git a/src/app/components/cards/PostFull.jsx b/src/app/components/cards/PostFull.jsx
+index c071895..6ea423e 100644
+--- a/src/app/components/cards/PostFull.jsx
++++ b/src/app/components/cards/PostFull.jsx
+@@ -3,8 +3,6 @@ import { Link } from 'react-router';
+ import TimeAgoWrapper from 'app/components/elements/TimeAgoWrapper';
+ import Icon from 'app/components/elements/Icon';
+ import { connect } from 'react-redux';
+-import user from 'app/redux/User';
+-import transaction from 'app/redux/Transaction'
+ import Voting from 'app/components/elements/Voting';
+ import Reblog from 'app/components/elements/Reblog';
+ import MarkdownViewer from 'app/components/cards/MarkdownViewer';
+@@ -376,15 +374,15 @@ export default connect(
+ 
+     // mapDispatchToProps
+     dispatch => ({
+-        dispatchSubmit: (data) => { dispatch(user.actions.usernamePasswordLogin({...data})) },
+-        clearError: () => { dispatch(user.actions.loginError({error: null})) },
+-        unlock: () => { dispatch(user.actions.showLogin()) },
++        dispatchSubmit: (data) => { dispatch({type: 'user/USERNAME_PASSWORD_LOGIN', payload: {...data}}) },
++        clearError: () => { dispatch({type: 'user/LOGIN_ERROR', payload: {error: null}}) },
++        unlock: () => { dispatch({type: 'user/SHOW_LOGIN'}) },
+         deletePost: (author, permlink) => {
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'delete_comment',
+                 operation: {author, permlink},
+                 confirm: tt('g.are_you_sure')
+-            }));
++            }});
+         },
+         showPromotePost: (author, permlink) => {
+             dispatch({type: 'global/SHOW_DIALOG', payload: {name: 'promotePost', params: {author, permlink}}});
+diff --git a/src/app/components/cards/PostSummary.jsx b/src/app/components/cards/PostSummary.jsx
+index 33f763a..89231de 100644
+--- a/src/app/components/cards/PostSummary.jsx
++++ b/src/app/components/cards/PostSummary.jsx
+@@ -3,7 +3,6 @@ import { Link, browserHistory } from 'react-router';
+ import TimeAgoWrapper from 'app/components/elements/TimeAgoWrapper';
+ import Icon from 'app/components/elements/Icon';
+ import { connect } from 'react-redux';
+-import user from 'app/redux/User';
+ import Reblog from 'app/components/elements/Reblog';
+ import Voting from 'app/components/elements/Voting';
+ import {immutableAccessor} from 'app/utils/Accessors';
+@@ -286,7 +285,7 @@ export default connect(
+     },
+ 
+     (dispatch) => ({
+-        dispatchSubmit: data => { dispatch(user.actions.usernamePasswordLogin({...data})) },
+-        clearError: () => { dispatch(user.actions.loginError({error: null})) }
++        dispatchSubmit: data => { dispatch({type: 'user/USERNAME_PASSWORD_LOGIN', payload: {...data}}) },
++        clearError: () => { dispatch({type: 'user/LOGIN_ERROR', payload: {error: null}}) }
+     })
+ )(PostSummary)
+diff --git a/src/app/components/elements/ChangePassword.jsx b/src/app/components/elements/ChangePassword.jsx
+index 835d564..e2f3f5c 100644
+--- a/src/app/components/elements/ChangePassword.jsx
++++ b/src/app/components/elements/ChangePassword.jsx
+@@ -1,6 +1,5 @@
+ /* eslint react/prop-types: 0 */
+ import React from 'react'
+-import transaction from 'app/redux/Transaction'
+ import LoadingIndicator from 'app/components/elements/LoadingIndicator'
+ import {validate_account_name} from 'app/utils/ChainValidation'
+ import {cleanReduxInput} from 'app/utils/ReduxForms'
+@@ -252,14 +251,14 @@ export default reduxForm(
+                     {authType: 'posting', oldAuth: password, newAuth: ph('posting', newWif)},
+                     {authType: 'memo', oldAuth: password, newAuth: ph('memo', newWif)},
+                 ]
+-            dispatch(transaction.actions.updateAuthorities({
++            dispatch({type: 'transaction/UPDATE_AUTHORITIES', payload: {
+                 twofa,
+                 // signingKey provides the password if it was not provided in auths
+                 signingKey: authType ? password : null,
+                 accountName, auths,
+                 onSuccess: success, onError: error,
+                 // notifySuccess: 'Change password success'
+-            }))
++            }})
+         },
+         notify: (message) => {
+             dispatch({type: 'ADD_NOTIFICATION', payload: {
+diff --git a/src/app/components/elements/ConvertToSteem.jsx b/src/app/components/elements/ConvertToSteem.jsx
+index a1ffad4..5d0492b 100644
+--- a/src/app/components/elements/ConvertToSteem.jsx
++++ b/src/app/components/elements/ConvertToSteem.jsx
+@@ -2,7 +2,6 @@
+ import React from 'react'
+ import ReactDOM from 'react-dom';
+ import {reduxForm} from 'redux-form'; // @deprecated, instead use: app/utils/ReactForm.js
+-import transaction from 'app/redux/Transaction'
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate'
+ import TransactionError from 'app/components/elements/TransactionError'
+ import LoadingIndicator from 'app/components/elements/LoadingIndicator'
+@@ -103,7 +102,7 @@ export default reduxForm(
+             const amount = [parseFloat(amt).toFixed(3), DEBT_TICKER].join(" ")
+             const requestid = Math.floor(Date.now() / 1000)
+             const conf = tt('postfull_jsx.in_week_convert_DEBT_TOKEN_to_LIQUID_TOKEN', { amount: amount.split(' ')[0], DEBT_TOKEN, LIQUID_TOKEN})
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'convert',
+                 operation: {owner, requestid, amount},
+                 confirm: conf + '?',
+@@ -116,7 +115,7 @@ export default reduxForm(
+                     })
+                 },
+                 errorCallback: () => {error()}
+-            }))
++            }})
+         },
+     })
+ )(ConvertToSteem)
+diff --git a/src/app/components/elements/Follow.jsx b/src/app/components/elements/Follow.jsx
+index 313d5c7..8319721 100644
+--- a/src/app/components/elements/Follow.jsx
++++ b/src/app/components/elements/Follow.jsx
+@@ -2,10 +2,8 @@ import React, {PropTypes} from 'react';
+ import {connect} from 'react-redux';
+ import LoadingIndicator from 'app/components/elements/LoadingIndicator';
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate';
+-import transaction from 'app/redux/Transaction';
+ import {Set, Map} from 'immutable'
+ import tt from 'counterpart';
+-import user from 'app/redux/User';
+ 
+ const {string, bool, any} = PropTypes;
+ 
+@@ -135,7 +133,7 @@ module.exports = connect(
+         updateFollow: (follower, following, action, done) => {
+             const what = action ? [action] : [];
+             const json = ['follow', {follower, following, what}];
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'custom_json',
+                 operation: {
+                     id: 'follow',
+@@ -144,11 +142,11 @@ module.exports = connect(
+                 },
+                 successCallback: done,
+                 errorCallback: done,
+-            }))
++            }})
+         },
+         showLogin: e => {
+             if (e) e.preventDefault();
+-            dispatch(user.actions.showLogin())
++            dispatch({type: 'user/SHOW_LOGIN'})
+         },
+     })
+ )(Follow);
+diff --git a/src/app/components/elements/Keys.jsx b/src/app/components/elements/Keys.jsx
+index a82226a..e5aae31 100644
+--- a/src/app/components/elements/Keys.jsx
++++ b/src/app/components/elements/Keys.jsx
+@@ -2,8 +2,6 @@
+ import React, {PropTypes, Component} from 'react'
+ import {Map, List} from 'immutable'
+ import {connect} from 'react-redux'
+-import user from 'app/redux/User'
+-import g from 'app/redux/GlobalReducer'
+ import ShowKey from 'app/components/elements/ShowKey'
+ import tt from 'counterpart';
+ 
+@@ -111,8 +109,8 @@ export default connect(
+     dispatch => ({
+         showChangePassword: (username, authType, priorAuthKey) => {
+             const name = 'changePassword'
+-            dispatch(g.actions.remove({key: name}))
+-            dispatch(g.actions.showDialog({name, params: {username, authType, priorAuthKey}}))
++            dispatch({type: 'global/REMOVE', payload: {key: name}})
++            dispatch({type: 'global/SHOW_DIALOG', payload: {name, params: {username, authType, priorAuthKey}}})
+         },
+     })
+ )(Keys)
+diff --git a/src/app/components/elements/PasswordReset.jsx b/src/app/components/elements/PasswordReset.jsx
+index 94ab69d..e39b9f2 100644
+--- a/src/app/components/elements/PasswordReset.jsx
++++ b/src/app/components/elements/PasswordReset.jsx
+@@ -1,6 +1,5 @@
+ import React, {PropTypes, Component} from 'react'
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate'
+-import g from 'app/redux/GlobalReducer'
+ import {connect} from 'react-redux';
+ import ChangePassword from 'app/components/elements/ChangePassword'
+ 
+diff --git a/src/app/components/elements/Reblog.jsx b/src/app/components/elements/Reblog.jsx
+index 33fe154..4667ca5 100644
+--- a/src/app/components/elements/Reblog.jsx
++++ b/src/app/components/elements/Reblog.jsx
+@@ -2,7 +2,6 @@ import React, {PropTypes} from 'react';
+ import {connect} from 'react-redux';
+ // import LoadingIndicator from 'app/components/elements/LoadingIndicator';
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate'
+-import transaction from 'app/redux/Transaction';
+ import Icon from 'app/components/elements/Icon';
+ import tt from 'counterpart';
+ 
+@@ -81,7 +80,7 @@ module.exports = connect(
+     dispatch => ({
+         reblog: (account, author, permlink, successCallback, errorCallback) => {
+             const json = ['reblog', {account, author, permlink}]
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'custom_json',
+                 confirm: tt('g.are_you_sure'),
+                 operation: {
+@@ -91,7 +90,7 @@ module.exports = connect(
+                     __config: {title: tt('g.resteem_this_post')}
+                 },
+                 successCallback, errorCallback,
+-            }))
++            }})
+         },
+     })
+ )(Reblog)
+diff --git a/src/app/components/elements/ReplyEditor.jsx b/src/app/components/elements/ReplyEditor.jsx
+index 370bfbd..7c11fba 100644
+--- a/src/app/components/elements/ReplyEditor.jsx
++++ b/src/app/components/elements/ReplyEditor.jsx
+@@ -1,6 +1,5 @@
+ import React from 'react';
+ import reactForm from 'app/utils/ReactForm'
+-import transaction from 'app/redux/Transaction';
+ import MarkdownViewer from 'app/components/cards/MarkdownViewer'
+ import CategorySelector from 'app/components/cards/CategorySelector'
+ import {validateCategory} from 'app/components/cards/CategorySelector'
+@@ -10,7 +9,6 @@ import Tooltip from 'app/components/elements/Tooltip'
+ import sanitizeConfig, {allowedTags} from 'app/utils/SanitizeConfig'
+ import sanitize from 'sanitize-html'
+ import HtmlReady from 'shared/HtmlReady'
+-import g from 'app/redux/GlobalReducer'
+ import {Set} from 'immutable'
+ import Remarkable from 'remarkable'
+ import Dropzone from 'react-dropzone'
+@@ -527,10 +525,10 @@ export default (formId) => connect(
+     // mapDispatchToProps
+     dispatch => ({
+         clearMetaData: (id) => {
+-            dispatch(g.actions.clearMeta({id}))
++            dispatch({type: 'global/CLEAR_META', payload: {id}})
+         },
+         setMetaData: (id, jsonMetadata) => {
+-            dispatch(g.actions.setMetaData({id, meta: jsonMetadata ? jsonMetadata.steem : null}))
++            dispatch({type: 'global/SET_META_DATA', payload: {id, meta: jsonMetadata ? jsonMetadata.steem : null}})
+         },
+         uploadImage: (file, progress) => {
+             dispatch({
+@@ -647,12 +645,12 @@ export default (formId) => connect(
+                 json_metadata: meta,
+                 __config
+             }
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'comment',
+                 operation,
+                 errorCallback,
+                 successCallback,
+-            }))
++            }})
+         },
+     })
+ )(ReplyEditor)
+diff --git a/src/app/components/elements/SaveLogin.jsx b/src/app/components/elements/SaveLogin.jsx
+deleted file mode 100644
+index 7de733b..0000000
+--- a/src/app/components/elements/SaveLogin.jsx
++++ /dev/null
+@@ -1,42 +0,0 @@
+-import React, {Component, PropTypes} from 'react'
+-import Tooltip from 'app/components/elements/Tooltip'
+-import {connect} from 'react-redux'
+-import user from 'app/redux/User'
+-import tt from 'counterpart';
+-
+-const {bool, func} = PropTypes
+-
+-class SaveLogin extends Component {
+-    static propTypes = {
+-        saveLoginConfirm: bool,
+-        yes: func,
+-        no: func,
+-    }
+-    render() {
+-        const {props: {saveLoginConfirm, no, yes}} = this
+-        if (!saveLoginConfirm) return <span></span>
+-        setTimeout(() => {no()}, 7.5 * 1000)
+-        return (
+-            <span style={{backgroundColor: 'white'}}>
+-                <Tooltip t={tt('g.remember_voting_and_posting_key')}>
+-                    {tt('g.auto_login_question_mark')} <a onClick={yes} className="uppercase">{tt('g.yes')}</a> / <a onClick={no} className="uppercase">{tt('g.no')}</a>
+-                </Tooltip>
+-            </span>
+-        )
+-    }
+-}
+-// export default connect(
+-//     state => {
+-//         if (!state.user) return
+-//         return {
+-//             saveLoginConfirm: state.user.get('saveLoginConfirm'),
+-//         }
+-//     },
+-//     dispatch => ({
+-//         no: () => {dispatch(user.actions.saveLoginConfirm(false))},
+-//         yes: () => {
+-//             dispatch(user.actions.saveLoginConfirm(false))
+-//             dispatch(user.actions.saveLogin())
+-//         },
+-//     })
+-// )(SaveLogin)
+diff --git a/src/app/components/elements/SavingsWithdrawHistory.jsx b/src/app/components/elements/SavingsWithdrawHistory.jsx
+index 8e63db4..8d125dc 100644
+--- a/src/app/components/elements/SavingsWithdrawHistory.jsx
++++ b/src/app/components/elements/SavingsWithdrawHistory.jsx
+@@ -3,7 +3,6 @@ import React from 'react'
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate'
+ import LoadingIndicator from 'app/components/elements/LoadingIndicator'
+ import TimeAgoWrapper from 'app/components/elements/TimeAgoWrapper'
+-import transaction from 'app/redux/Transaction'
+ import Memo from 'app/components/elements/Memo'
+ import tt from 'counterpart'
+ 
+@@ -112,13 +111,13 @@ export default connect(
+                 dispatch({type: 'global/GET_STATE', payload: {url: `@${fro}/transfers`}})
+                 success()
+             }
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'cancel_transfer_from_savings',
+                 operation: {from: fro, request_id},
+                 confirm,
+                 successCallback,
+                 errorCallback
+-            }))
++            }})
+         },
+     })
+ )(SavingsWithdrawHistory)
+diff --git a/src/app/components/elements/ShowKey.js b/src/app/components/elements/ShowKey.js
+index 3df99d0..e120e99 100644
+--- a/src/app/components/elements/ShowKey.js
++++ b/src/app/components/elements/ShowKey.js
+@@ -1,9 +1,7 @@
+ import React, {PropTypes, Component} from 'react';
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate';
+ import {connect} from 'react-redux';
+-import user from 'app/redux/User';
+ import tt from 'counterpart';
+-import g from 'app/redux/GlobalReducer';
+ 
+ /** Display a public key.  Offer to show a private key, but only if it matches the provided public key */
+ class ShowKey extends Component {
+@@ -100,10 +98,10 @@ export default connect(
+     (state, ownProps) => ownProps,
+     dispatch => ({
+         showLogin: ({username, authType}) => {
+-            dispatch(user.actions.showLogin({loginDefault: {username, authType}}))
++            dispatch({type: 'user/SHOW_LOGIN', payload: {loginDefault: {username, authType}}})
+         },
+         showQRKey: ({type, isPrivate, text}) => {
+-            dispatch(g.actions.showDialog({name: "qr_key", params: {type, isPrivate, text}}));
++            dispatch({type: 'global/SHOW_DIALOG', payload: {name: "qr_key", params: {type, isPrivate, text}}});
+         }
+     })
+ )(ShowKey)
+diff --git a/src/app/components/elements/SuggestPassword.jsx b/src/app/components/elements/SuggestPassword.jsx
+index a4aed93..653f3d0 100644
+--- a/src/app/components/elements/SuggestPassword.jsx
++++ b/src/app/components/elements/SuggestPassword.jsx
+@@ -2,7 +2,6 @@
+ import React from 'react'
+ import {connect} from 'react-redux'
+ import {renderToString} from 'react-dom/server'
+-import g from 'app/redux/GlobalReducer'
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate'
+ import Icon from 'app/components/elements/Icon'
+ import tt from 'counterpart';
+@@ -99,7 +98,7 @@ export default connect(
+             const PASSWORD_LENGTH = 32
+             const private_key = key_utils.get_random_key()
+             const suggestedPassword = private_key.toWif().substring(3, 3 + PASSWORD_LENGTH)
+-            dispatch(g.actions.set({key: 'suggestedPassword', value: suggestedPassword}))
++            dispatch({type: 'global/SET', payload: {key: 'suggestedPassword', value: suggestedPassword}})
+         },
+     })
+ )(SuggestPassword)
+diff --git a/src/app/components/elements/Template.jsx b/src/app/components/elements/Template.jsx
+index d4c05d5..d349953 100644
+--- a/src/app/components/elements/Template.jsx
++++ b/src/app/components/elements/Template.jsx
+@@ -1,7 +1,5 @@
+ /* eslint react/prop-types: 0 */
+ import React from 'react'
+-// import g from 'app/redux/GlobalReducer'
+-// import transaction from 'app/redux/Transaction'
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate'
+ // import {Map} from 'immutable'
+ 
+diff --git a/src/app/components/elements/TransactionError.jsx b/src/app/components/elements/TransactionError.jsx
+index 78da84a..81d67fb 100644
+--- a/src/app/components/elements/TransactionError.jsx
++++ b/src/app/components/elements/TransactionError.jsx
+@@ -1,6 +1,5 @@
+ import React from 'react'
+ import {connect} from 'react-redux'
+-import transaction from 'app/redux/Transaction'
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate'
+ import {Map} from 'immutable'
+ 
+@@ -62,11 +61,11 @@ export default connect(
+     // mapDispatchToProps
+     dispatch => ({
+         addListener: (opType) => {
+-            dispatch(transaction.actions.set({key: ['TransactionError', opType + '_listener'], value: true}))
++            dispatch({type: 'transaction/SET', payload: {key: ['TransactionError', opType + '_listener'], value: true}})
+         },
+         removeListener: (opType) => {
+-            dispatch(transaction.actions.remove({key: ['TransactionError', opType]}))
+-            dispatch(transaction.actions.remove({key: ['TransactionError', opType + '_listener']}))
++            dispatch({type: 'transaction/REMOVE', payload: {key: ['TransactionError', opType]}})
++            dispatch({type: 'transaction/REMOVE', payload: {key: ['TransactionError', opType + '_listener']}})
+         },
+     })
+ )(TransactionError)
+diff --git a/src/app/components/elements/UserKeys.jsx b/src/app/components/elements/UserKeys.jsx
+index cacf859..602d0c5 100644
+--- a/src/app/components/elements/UserKeys.jsx
++++ b/src/app/components/elements/UserKeys.jsx
+@@ -1,7 +1,6 @@
+ import React, {PropTypes, Component} from 'react'
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate'
+ import Keys from 'app/components/elements/Keys'
+-import g from 'app/redux/GlobalReducer'
+ import {connect} from 'react-redux';
+ import QRCode from 'react-qr'
+ import tt from 'counterpart';
+@@ -114,12 +113,12 @@ export default connect(
+     },
+     dispatch => ({
+         setWifShown: (shown) => {
+-            dispatch(g.actions.receiveState({UserKeys_wifShown: shown}))
++            dispatch({type: 'global/RECEIVE_STATE', payload: {UserKeys_wifShown: shown}})
+         },
+         showChangePassword: (username) => {
+             const name = 'changePassword'
+-            dispatch(g.actions.remove({key: name}))
+-            dispatch(g.actions.showDialog({name, params: {username}}))
++            dispatch({type: 'global/REMOVE', payload: {key: name}})
++            dispatch({type: 'global/SHOW_DIALOG', payload: {name, params: {username}}})
+         },
+     })
+ )(UserKeys)
+diff --git a/src/app/components/elements/Voting.jsx b/src/app/components/elements/Voting.jsx
+index 23962a9..534ce39 100644
+--- a/src/app/components/elements/Voting.jsx
++++ b/src/app/components/elements/Voting.jsx
+@@ -1,6 +1,5 @@
+ import React from 'react';
+ import { connect } from 'react-redux';
+-import transaction from 'app/redux/Transaction';
+ import Slider from 'react-rangeslider';
+ import Icon from 'app/components/elements/Icon';
+ import FormattedAsset from 'app/components/elements/FormattedAsset';
+@@ -299,13 +298,13 @@ export default connect(
+                 if(weight < 0) return tt('voting_jsx.changing_to_a_downvote') + t
+                 return null
+             }
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'vote',
+                 operation: {voter: username, author, permlink, weight,
+                     __config: {title: weight < 0 ? tt('voting_jsx.confirm_flag') : null},
+                 },
+                 confirm,
+-            }))
++            }})
+         },
+     })
+ )(Voting)
+diff --git a/src/app/components/modules/ConfirmTransactionForm.jsx b/src/app/components/modules/ConfirmTransactionForm.jsx
+index c1ce794..3b6d460 100644
+--- a/src/app/components/modules/ConfirmTransactionForm.jsx
++++ b/src/app/components/modules/ConfirmTransactionForm.jsx
+@@ -1,6 +1,5 @@
+ import React, { PropTypes, Component } from 'react';
+ import {connect} from 'react-redux'
+-import transaction from 'app/redux/Transaction'
+ import {findParent} from 'app/utils/DomUtils';
+ import tt from 'counterpart';
+ 
+@@ -95,8 +94,8 @@ export default connect(
+     // mapDispatchToProps
+     dispatch => ({
+         okClick: (confirmBroadcastOperation) => {
+-            dispatch(transaction.actions.hideConfirm())
+-            dispatch(transaction.actions.broadcastOperation({...(confirmBroadcastOperation.toJS())}))
++            dispatch({type: 'transaction/HIDE_CONFIRM'})
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {...(confirmBroadcastOperation.toJS())}})
+         }
+     })
+ )(ConfirmTransactionForm)
+diff --git a/src/app/components/modules/Dialogs.jsx b/src/app/components/modules/Dialogs.jsx
+index ddfd440..080a0a8 100644
+--- a/src/app/components/modules/Dialogs.jsx
++++ b/src/app/components/modules/Dialogs.jsx
+@@ -2,7 +2,6 @@ import React from 'react';
+ import {connect} from 'react-redux';
+ import CloseButton from 'react-foundation-components/lib/global/close-button';
+ import Reveal from 'react-foundation-components/lib/global/reveal';
+-import g from 'app/redux/GlobalReducer'
+ import {Map, List} from 'immutable'
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate';
+ import QrReader from 'app/components/elements/QrReader'
+@@ -99,7 +98,7 @@ export default connect(
+     },
+     dispatch => ({
+         hide: name => {
+-            dispatch(g.actions.hideDialog({name}))
++            dispatch({type: 'global/HIDE_DIALOG', payload: {name}})
+         },
+     })
+ )(Dialogs)
+diff --git a/src/app/components/modules/LoginForm.jsx b/src/app/components/modules/LoginForm.jsx
+index 2a7d499..3a431d6 100644
+--- a/src/app/components/modules/LoginForm.jsx
++++ b/src/app/components/modules/LoginForm.jsx
+@@ -1,8 +1,5 @@
+ /* eslint react/prop-types: 0 */
+ import React, { PropTypes, Component } from 'react';
+-import transaction from 'app/redux/Transaction'
+-import g from 'app/redux/GlobalReducer'
+-import user from 'app/redux/User'
+ import {validate_account_name} from 'app/utils/ChainValidation';
+ import runTests from 'app/utils/BrowserTests';
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate'
+@@ -301,25 +298,25 @@ export default connect(
+     // mapDispatchToProps
+     dispatch => ({
+         dispatchSubmit: (data, loginBroadcastOperation, afterLoginRedirectToWelcome) => {
+-            const {password, saveLogin} = data
+-            const username = data.username.trim().toLowerCase()
++            const {password, saveLogin} = data;
++            const username = data.username.trim().toLowerCase();
+             if (loginBroadcastOperation) {
+-                const {type, operation, successCallback, errorCallback} = loginBroadcastOperation.toJS()
+-                dispatch(transaction.actions.broadcastOperation({type, operation, username, password, successCallback, errorCallback}))
+-                dispatch(user.actions.usernamePasswordLogin({username, password, saveLogin, afterLoginRedirectToWelcome, operationType: type}))
+-                dispatch(user.actions.closeLogin())
++                const {type, operation, successCallback, errorCallback} = loginBroadcastOperation.toJS();
++                dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {type, operation, username, password, successCallback, errorCallback}});
++                dispatch({type: 'user/USERNAME_PASSWORD_LOGIN', payload: {username, password, saveLogin, afterLoginRedirectToWelcome, operationType: type}});
++                dispatch({type: 'user/CLOSE_LOGIN'});
+             } else {
+-                dispatch(user.actions.usernamePasswordLogin({username, password, saveLogin, afterLoginRedirectToWelcome}))
++                dispatch({type: 'user/USERNAME_PASSWORD_LOGIN', payload: {username, password, saveLogin, afterLoginRedirectToWelcome}});
+             }
+         },
+-        clearError: () => { if (hasError) dispatch(user.actions.loginError({error: null})) },
++        clearError: () => { if (hasError) dispatch({type: 'user/LOGIN_ERROR', payload: {error: null}}) },
+         qrReader: (dataCallback) => {
+-            dispatch(g.actions.showDialog({name: 'qr_reader', params: {handleScan: dataCallback}}));
++            dispatch({type: 'global/SHOW_DIALOG', payload: {name: 'qr_reader', params: {handleScan: dataCallback}}});
+         },
+         showChangePassword: (username, defaultPassword) => {
+-            dispatch(user.actions.closeLogin())
+-            dispatch(g.actions.remove({key: 'changePassword'}))
+-            dispatch(g.actions.showDialog({name: 'changePassword', params: {username, defaultPassword}}))
++            dispatch({type: 'user/CLOSE_LOGIN'});
++            dispatch({type: 'global/REMOVE', payload: {key: 'changePassword'}});
++            dispatch({type: 'global/SHOW_DIALOG', payload: {name: 'changePassword', params: {username, defaultPassword}}});
+         },
+     })
+ )(LoginForm)
+diff --git a/src/app/components/modules/Modals.jsx b/src/app/components/modules/Modals.jsx
+index 5114999..adc4b05 100644
+--- a/src/app/components/modules/Modals.jsx
++++ b/src/app/components/modules/Modals.jsx
+@@ -6,12 +6,9 @@ import LoginForm from 'app/components/modules/LoginForm';
+ import ConfirmTransactionForm from 'app/components/modules/ConfirmTransactionForm';
+ import Transfer from 'app/components/modules/Transfer';
+ import SignUp from 'app/components/modules/SignUp';
+-import user from 'app/redux/User';
+ import Powerdown from 'app/components/modules/Powerdown';
+-import tr from 'app/redux/Transaction';
+ import shouldComponentUpdate from 'app/utils/shouldComponentUpdate';
+ import {NotificationStack} from 'react-notification';
+-import {OrderedSet} from 'immutable';
+ import TermsAgree from 'app/components/modules/TermsAgree';
+ 
+ class Modals extends React.Component {
+@@ -100,27 +97,27 @@ export default connect(
+     dispatch => ({
+         hideLogin: e => {
+             if (e) e.preventDefault();
+-            dispatch(user.actions.hideLogin())
++            dispatch({type: 'user/HIDE_LOGIN'})
+         },
+         hideConfirm: e => {
+             if (e) e.preventDefault();
+-            dispatch(tr.actions.hideConfirm())
++            dispatch({type: 'transaction/HIDE_CONFIRM'})
+         },
+         hideTransfer: e => {
+             if (e) e.preventDefault();
+-            dispatch(user.actions.hideTransfer())
++            dispatch({type: 'user/HIDE_TRANSFER'})
+         },
+         hidePowerdown: e => {
+             if (e) e.preventDefault();
+-            dispatch(user.actions.hidePowerdown())
++            dispatch({type: 'user/HIDE_POWERDOWN'})
+         },
+         hidePromotePost: e => {
+             if (e) e.preventDefault();
+-            dispatch(user.actions.hidePromotePost())
++            dispatch({type: 'user/HIDE_PROMOTE_POST'})
+         },
+         hideSignUp: e => {
+             if (e) e.preventDefault();
+-            dispatch(user.actions.hideSignUp())
++            dispatch({type: 'user/HIDE_SIGN_UP'})
+         },
+         // example: addNotification: ({key, message}) => dispatch({type: 'ADD_NOTIFICATION', payload: {key, message}}),
+         removeNotification: (key) => dispatch({type: 'REMOVE_NOTIFICATION', payload: {key}})
+diff --git a/src/app/components/modules/Powerdown.jsx b/src/app/components/modules/Powerdown.jsx
+index 79dc365..227049a 100644
+--- a/src/app/components/modules/Powerdown.jsx
++++ b/src/app/components/modules/Powerdown.jsx
+@@ -1,10 +1,7 @@
+ import React from 'react';
+ import {connect} from 'react-redux'
+ import g from 'app/redux/GlobalReducer'
+-import reactForm from 'app/utils/ReactForm'
+ import Slider from 'react-rangeslider';
+-import transaction from 'app/redux/Transaction';
+-import user from 'app/redux/User';
+ import tt from 'counterpart'
+ import {VEST_TICKER, LIQUID_TICKER, VESTING_TOKEN} from 'app/client_config'
+ import {numberWithCommas, spToVestsf, vestsToSpf, vestsToSp, assetFloat} from 'app/utils/StateFunctions'
+@@ -30,7 +27,7 @@ class Powerdown extends React.Component {
+ 
+     render() {
+         const {broadcasting, new_withdraw, manual_entry} = this.state
+-        const {account, available_shares, withdrawn, to_withdraw, vesting_shares, delegated_vesting_shares} = this.props
++        const {account, withdrawn, to_withdraw, vesting_shares, delegated_vesting_shares} = this.props
+         const formatSp = (amount) => numberWithCommas(vestsToSp(this.props.state, amount))
+         const sliderChange = (value) => {
+             this.setState({new_withdraw: value, manual_entry: false})
+@@ -55,8 +52,12 @@ class Powerdown extends React.Component {
+             if (withdraw > vesting_shares - delegated_vesting_shares) {
+                 withdraw = vesting_shares - delegated_vesting_shares
+             }
+-            const vesting_shares = `${ withdraw.toFixed(6) } ${ VEST_TICKER }`
+-            this.props.withdrawVesting({account, vesting_shares, errorCallback, successCallback})
++            this.props.withdrawVesting({
++                account,
++                vesting_shares: `${withdraw.toFixed(6)} ${VEST_TICKER}`,
++                errorCallback,
++                successCallback
++            })
+         }
+ 
+         const notes = []
+@@ -157,7 +158,7 @@ export default connect(
+     // mapDispatchToProps
+     dispatch => ({
+         successCallback: () => {
+-            dispatch(user.actions.hidePowerdown())
++            dispatch({type: 'user/HIDE_POWERDOWN'})
+         },
+         powerDown: (e) => {
+             e.preventDefault()
+@@ -169,12 +170,12 @@ export default connect(
+                 dispatch({type: 'global/GET_STATE', payload: {url: `@${account}/transfers`}})
+                 return successCallback(...args)
+             }
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'withdraw_vesting',
+                 operation: {account, vesting_shares},
+                 errorCallback,
+                 successCallback: successCallbackWrapper,
+-            }))
++            }})
+         },
+     })
+ )(Powerdown)
+diff --git a/src/app/components/modules/PromotePost.jsx b/src/app/components/modules/PromotePost.jsx
+index bee738d..78692bb 100644
+--- a/src/app/components/modules/PromotePost.jsx
++++ b/src/app/components/modules/PromotePost.jsx
+@@ -1,7 +1,6 @@
+ import React, { PropTypes, Component } from 'react';
+ import {connect} from 'react-redux';
+ import ReactDOM from 'react-dom';
+-import transaction from 'app/redux/Transaction';
+ import LoadingIndicator from 'app/components/elements/LoadingIndicator';
+ import { DEBT_TOKEN, DEBT_TOKEN_SHORT, CURRENCY_SIGN, DEBT_TICKER} from 'app/client_config';
+ import tt from 'counterpart';
+@@ -43,7 +42,6 @@ class PromotePost extends Component {
+         const {author, permlink, onClose} = this.props
+         const {amount} = this.state
+         this.setState({loading: true});
+-        console.log('-- PromotePost.onSubmit -->');
+         this.props.dispatchSubmit({amount, asset: DEBT_TICKER, author, permlink, onClose,
+             currentUser: this.props.currentUser, errorCallback: this.errorCallback});
+     }
+@@ -122,12 +120,12 @@ export default connect(
+                 memo: `@${author}/${permlink}`,
+                 __config: {successMessage: tt('promote_post_jsx.you_successfully_promoted_this_post') + '.'}
+             }
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'transfer',
+                 operation,
+                 successCallback,
+                 errorCallback
+-            }))
++            }})
+         }
+     })
+ )(PromotePost)
+diff --git a/src/app/components/modules/Settings.jsx b/src/app/components/modules/Settings.jsx
+index f32358c..3102522 100644
+--- a/src/app/components/modules/Settings.jsx
++++ b/src/app/components/modules/Settings.jsx
+@@ -1,8 +1,6 @@
+ import React from 'react';
+ import {connect} from 'react-redux'
+-import user from 'app/redux/User';
+ import tt from 'counterpart';
+-import transaction from 'app/redux/Transaction'
+ import o2j from 'shared/clash/object2json'
+ import LoadingIndicator from 'app/components/elements/LoadingIndicator'
+ import reactForm from 'app/utils/ReactForm'
+@@ -250,11 +248,11 @@ export default connect(
+     // mapDispatchToProps
+     dispatch => ({
+         changeLanguage: (language) => {
+-            dispatch(user.actions.changeLanguage(language))
++            dispatch({type: 'user/CHANGE_LANGUAGE', payload: language})
+         },
+         updateAccount: ({successCallback, errorCallback, ...operation}) => {
+             const options = {type: 'account_update', operation, successCallback, errorCallback}
+-            dispatch(transaction.actions.broadcastOperation(options))
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: options})
+         },
+         setUserPreferences: (payload) => {
+             dispatch({type: 'SET_USER_PREFERENCES', payload})
+diff --git a/src/app/components/modules/TopRightMenu.jsx b/src/app/components/modules/TopRightMenu.jsx
+index 96e125c..efe1410 100644
+--- a/src/app/components/modules/TopRightMenu.jsx
++++ b/src/app/components/modules/TopRightMenu.jsx
+@@ -2,7 +2,6 @@ import React from 'react';
+ import { Link } from 'react-router';
+ import {connect} from 'react-redux';
+ import Icon from 'app/components/elements/Icon';
+-import user from 'app/redux/User';
+ import Userpic from 'app/components/elements/Userpic';
+ import { browserHistory } from 'react-router';
+ import { LinkWithDropdown } from 'react-foundation-components/lib/global/dropdown';
+@@ -135,11 +134,11 @@ export default connect(
+     dispatch => ({
+         showLogin: e => {
+             if (e) e.preventDefault();
+-            dispatch(user.actions.showLogin())
++            dispatch({type: 'user/SHOW_LOGIN'})
+         },
+         logout: e => {
+             if (e) e.preventDefault();
+-            dispatch(user.actions.logout())
++            dispatch({type: 'user/LOGOUT'})
+         },
+         toggleNightmode: e => {
+             if (e) e.preventDefault();
+diff --git a/src/app/components/modules/Transfer.jsx b/src/app/components/modules/Transfer.jsx
+index 686a1e6..a8c9365 100644
+--- a/src/app/components/modules/Transfer.jsx
++++ b/src/app/components/modules/Transfer.jsx
+@@ -2,8 +2,6 @@ import React, { PropTypes, Component } from 'react';
+ import ReactDOM from 'react-dom';
+ import reactForm from 'app/utils/ReactForm';
+ import {Map} from 'immutable';
+-import transaction from 'app/redux/Transaction';
+-import user from 'app/redux/User';
+ import LoadingIndicator from 'app/components/elements/LoadingIndicator';
+ import runTests, {browserTests} from 'app/utils/BrowserTests'
+ import {validate_account_name, validate_memo_field} from 'app/utils/ChainValidation';
+@@ -297,7 +295,7 @@ export default connect(
+                 if(/Savings Withdraw/.test(transferType)) {
+                     dispatch({type: 'user/LOAD_SAVINGS_WITHDRAW', payload: {}})
+                 }
+-                dispatch(user.actions.hideTransfer())
++                dispatch({type: 'user/HIDE_TRANSFER'})
+             };
+             const asset2 = toVesting ? 'STEEM' : asset;
+             const operation = {
+@@ -309,7 +307,7 @@ export default connect(
+             if(transferType === 'Savings Withdraw')
+                 operation.request_id = Math.floor((Date.now() / 1000) % 4294967295);
+ 
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: toVesting ? 'transfer_to_vesting' : (
+                     transferType === 'Transfer to Account' ? 'transfer' :
+                     transferType === 'Transfer to Savings' ? 'transfer_to_savings' :
+@@ -319,7 +317,7 @@ export default connect(
+                 operation,
+                 successCallback,
+                 errorCallback
+-            }))
++            }})
+         }
+     })
+ )(TransferForm)
+diff --git a/src/app/components/modules/UserWallet.jsx b/src/app/components/modules/UserWallet.jsx
+index 64093dd..a4a1691 100644
+--- a/src/app/components/modules/UserWallet.jsx
++++ b/src/app/components/modules/UserWallet.jsx
+@@ -2,7 +2,6 @@
+ import React from 'react';
+ import {connect} from 'react-redux'
+ import {Link} from 'react-router'
+-import g from 'app/redux/GlobalReducer'
+ import SavingsWithdrawHistory from 'app/components/elements/SavingsWithdrawHistory';
+ import TransferHistoryRow from 'app/components/cards/TransferHistoryRow';
+ import TransactionError from 'app/components/elements/TransactionError';
+@@ -16,7 +15,6 @@ import {FormattedHTMLMessage} from 'app/Translator';
+ import tt from 'counterpart';
+ import {List} from 'immutable'
+ import { LIQUID_TOKEN, LIQUID_TICKER, DEBT_TOKENS, VESTING_TOKEN } from 'app/client_config';
+-import transaction from 'app/redux/Transaction';
+ 
+ const assetPrecision = 1000;
+ 
+@@ -432,21 +430,21 @@ export default connect(
+                 reward_vests: account.get('reward_vesting_balance')
+             };
+ 
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'claim_reward_balance',
+                 operation,
+                 successCallback,
+-            }))
++            }})
+         },
+         convertToSteem: (e) => {
+             e.preventDefault()
+             const name = 'convertToSteem';
+-            dispatch(g.actions.showDialog({name}))
++            dispatch({type: 'global/SHOW_DIALOG', payload: {name}})
+         },
+         showChangePassword: (username) => {
+             const name = 'changePassword';
+-            dispatch(g.actions.remove({key: name}));
+-            dispatch(g.actions.showDialog({name, params: {username}}))
++            dispatch({type: 'global/REMOVE', payload: {key: name}});
++            dispatch({type: 'global/SHOW_DIALOG', payload: {name, params: {username}}})
+         },
+     })
+ )(UserWallet)
+diff --git a/src/app/components/pages/About.jsx b/src/app/components/pages/About.jsx
+index 3c693d7..23d8e13 100644
+--- a/src/app/components/pages/About.jsx
++++ b/src/app/components/pages/About.jsx
+@@ -1,17 +1,20 @@
+ import React from 'react';
+-import { APP_NAME, APP_URL } from 'app/client_config';
++import { APP_NAME, LANDING_PAGE_URL } from 'app/client_config';
+ import tt from 'counterpart';
+ 
++console.log('-- APP_NAME -->', APP_NAME);
++
+ class About extends React.Component {
+     render() {
+         return (
+             <div className="row">
+                 <div className="column">
+-                    <div className="float-right"><a href="#" onClick={e => {e.preventDefault(); alert(process.env.VERSION)}}>{tt('g.version')}</a></div>
++                    <h6 className="float-right">v. {process.env.VERSION}</h6>
+                     <h2>{tt('about_jsx.about_app', {APP_NAME})}</h2>
+                     <p>
+-                        {tt('about_jsx.about_app_details')}
+-                        <a href="https://steem.io/">{tt('about_jsx.learn_more_at_app_url', {APP_URL})}</a>.
++                        {tt('about_jsx.about_app_details', {APP_NAME})}
++                        <br />
++                        <a href={LANDING_PAGE_URL}>{tt('about_jsx.learn_more_at_app_url', {LANDING_PAGE_URL})}</a>.
+                     </p>
+                     <h2>{tt('about_jsx.resources')}</h2>
+                     <h3><a href="https://steem.io/SteemWhitePaper.pdf" onClick={this.navigate}>{tt('navigation.APP_NAME_whitepaper', {APP_NAME})}</a> <small>[PDF]</small></h3>
+diff --git a/src/app/components/pages/CreateAccount.jsx b/src/app/components/pages/CreateAccount.jsx
+index 75503ef..5107d80 100644
+--- a/src/app/components/pages/CreateAccount.jsx
++++ b/src/app/components/pages/CreateAccount.jsx
+@@ -3,7 +3,6 @@
+ import React from 'react';
+ import {connect} from 'react-redux';
+ import LoadingIndicator from 'app/components/elements/LoadingIndicator';
+-import user from 'app/redux/User';
+ import {PrivateKey} from 'steem/lib/auth/ecc';
+ import {validate_account_name} from 'app/utils/ChainValidation';
+ import runTests from 'app/utils/BrowserTests';
+@@ -321,14 +320,14 @@ module.exports = {
+             }
+         },
+         dispatch => ({
+-            loginUser: (username, password) => dispatch(user.actions.usernamePasswordLogin({username, password, saveLogin: true})),
++            loginUser: (username, password) => dispatch({type: 'user/USERNAME_PASSWORD_LOGIN', payload: {username, password, saveLogin: true}}),
+             logout: e => {
+                 if (e) e.preventDefault();
+-                dispatch(user.actions.logout())
++                dispatch({type: 'user/LOGOUT'})
+             },
+             showTerms: e => {
+                 if (e) e.preventDefault();
+-                dispatch(user.actions.showTerms())
++                dispatch({type: 'user/SHOW_TERMS'})
+             }
+         })
+     )(CreateAccount)
+diff --git a/src/app/components/pages/Market.jsx b/src/app/components/pages/Market.jsx
+index fb273d5..af7a93c 100644
+--- a/src/app/components/pages/Market.jsx
++++ b/src/app/components/pages/Market.jsx
+@@ -1,9 +1,6 @@
+ import React from 'react';
+ import ReactDOM from 'react-dom';
+ import {connect} from 'react-redux';
+-//import Highcharts from 'highcharts';
+-
+-import transaction from 'app/redux/Transaction'
+ import TransactionError from 'app/components/elements/TransactionError'
+ import DepthChart from 'app/components/elements/DepthChart';
+ import Orderbook from "app/components/elements/Orderbook";
+@@ -559,13 +556,13 @@ module.exports = {
+         cancelOrder: (owner, orderid, successCallback) => {
+             const confirm = tt('market_jsx.order_cancel_confirm', {order_id: orderid, user: owner})
+             const successMessage = tt('market_jsx.order_cancelled', {order_id: orderid})
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'limit_order_cancel',
+                 operation: {owner, orderid/*, __config: {successMessage}*/},
+                 confirm,
+                 successCallback: () => {successCallback(successMessage);}
+                 //successCallback
+-            }))
++            }})
+         },
+         placeOrder: (owner, amount_to_sell, min_to_receive, effectivePrice, priceWarning, marketPrice, successCallback, fill_or_kill = false, expiration = DEFAULT_EXPIRE) => {
+             // create_order jsc 12345 "1.000 SBD" "100.000 STEEM" true 1467122240 false
+@@ -588,14 +585,14 @@ module.exports = {
+                 warning = isSell ? tt('market_jsx.price_warning_below', warning_args) : tt('market_jsx.price_warning_above', warning_args);
+             }
+             const orderid = Math.floor(Date.now() / 1000)
+-            dispatch(transaction.actions.broadcastOperation({
++            dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                 type: 'limit_order_create',
+                 operation: {owner, amount_to_sell, min_to_receive, fill_or_kill, expiration, orderid}, //,
+                     //__config: {successMessage}},
+                 confirm,
+                 warning,
+                 successCallback: () => {successCallback(successMessage);}
+-            }))
++            }})
+         }
+     })
+     )(Market)
+diff --git a/src/app/components/pages/PickAccount.jsx b/src/app/components/pages/PickAccount.jsx
+index e7900b0..48a7958 100644
+--- a/src/app/components/pages/PickAccount.jsx
++++ b/src/app/components/pages/PickAccount.jsx
+@@ -2,7 +2,6 @@
+ /*global $STM_csrf, $STM_Config */
+ import React from 'react';
+ import {connect} from 'react-redux';
+-import user from 'app/redux/User';
+ import {api} from 'steem';
+ import {validate_account_name} from 'app/utils/ChainValidation';
+ import runTests from 'app/utils/BrowserTests';
+@@ -232,10 +231,10 @@ module.exports = {
+             }
+         },
+         dispatch => ({
+-            loginUser: (username, password) => dispatch(user.actions.usernamePasswordLogin({username, password, saveLogin: true})),
++            loginUser: (username, password) => dispatch({type: 'user/USERNAME_PASSWORD_LOGIN', payload: {username, password, saveLogin: true}}),
+             logout: e => {
+                 if (e) e.preventDefault();
+-                dispatch(user.actions.logout())
++                dispatch({type: 'user/LOGOUT'})
+             }
+         })
+     )(PickAccount)
+diff --git a/src/app/components/pages/UserProfile.jsx b/src/app/components/pages/UserProfile.jsx
+index 7e80c2a..c26ac57 100644
+--- a/src/app/components/pages/UserProfile.jsx
++++ b/src/app/components/pages/UserProfile.jsx
+@@ -3,8 +3,6 @@ import React from 'react';
+ import { Link } from 'react-router';
+ import {connect} from 'react-redux';
+ import { browserHistory } from 'react-router';
+-import transaction from 'app/redux/Transaction';
+-import user from 'app/redux/User';
+ import Icon from 'app/components/elements/Icon'
+ import UserKeys from 'app/components/elements/UserKeys';
+ import PasswordReset from 'app/components/elements/PasswordReset';
+@@ -465,29 +463,29 @@ module.exports = {
+             };
+         },
+         dispatch => ({
+-            login: () => {dispatch(user.actions.showLogin())},
+-            clearTransferDefaults: () => {dispatch(user.actions.clearTransferDefaults())},
++            login: () => {dispatch({type: 'user/SHOW_LOGIN'})},
++            clearTransferDefaults: () => {dispatch({type: 'user/CLEAR_TRANSFER_DEFAULTS'})},
+             showTransfer: (transferDefaults) => {
+-                dispatch(user.actions.setTransferDefaults(transferDefaults))
+-                dispatch(user.actions.showTransfer())
++                dispatch({type: 'user/SET_TRANSFER_DEFAULTS', payload: transferDefaults})
++                dispatch({type: 'user/SHOW_TRANSFER'})
+             },
+-            clearPowerdownDefaults: () => {dispatch(user.actions.clearPowerdownDefaults())},
++            clearPowerdownDefaults: () => {dispatch({type: 'user/CLEAR_POWERDOWN_DEFAULTS'})},
+             showPowerdown: (powerdownDefaults) => {
+                 console.log('power down defaults:', powerdownDefaults)
+-                dispatch(user.actions.setPowerdownDefaults(powerdownDefaults))
+-                dispatch(user.actions.showPowerdown())
++                dispatch({type: 'user/SET_POWERDOWN_DEFAULTS', payload: powerdownDefaults})
++                dispatch({type: 'user/SHOW_POWERDOWN'})
+             },
+             withdrawVesting: ({account, vesting_shares, errorCallback, successCallback}) => {
+                 const successCallbackWrapper = (...args) => {
+                     dispatch({type: 'global/GET_STATE', payload: {url: `@${account}/transfers`}})
+                     return successCallback(...args)
+                 }
+-                dispatch(transaction.actions.broadcastOperation({
++                dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                     type: 'withdraw_vesting',
+                     operation: {account, vesting_shares},
+                     errorCallback,
+                     successCallback: successCallbackWrapper,
+-                }))
++                }})
+             },
+             requestData: (args) => dispatch({type: 'REQUEST_DATA', payload: args}),
+         })
+diff --git a/src/app/components/pages/Witnesses.jsx b/src/app/components/pages/Witnesses.jsx
+index 9b2ca71..1f80ef7 100644
+--- a/src/app/components/pages/Witnesses.jsx
++++ b/src/app/components/pages/Witnesses.jsx
+@@ -3,10 +3,8 @@ import {connect} from 'react-redux';
+ import { Link } from 'react-router';
+ import links from 'app/utils/Links'
+ import Icon from 'app/components/elements/Icon';
+-import transaction from 'app/redux/Transaction'
+ import ByteBuffer from 'bytebuffer'
+ import {is} from 'immutable'
+-import g from 'app/redux/GlobalReducer';
+ import tt from 'counterpart';
+ 
+ const Long = ByteBuffer.Long
+@@ -224,25 +222,25 @@ module.exports = {
+         (dispatch) => {
+             return {
+                 accountWitnessVote: (username, witness, approve) => {
+-                    dispatch(transaction.actions.broadcastOperation({
++                    dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                         type: 'account_witness_vote',
+                         operation: {account: username, witness, approve},
+-                    }))
++                    }})
+                 },
+                 accountWitnessProxy: (account, proxy, stateCallback) => {
+-                    dispatch(transaction.actions.broadcastOperation({
++                    dispatch({type: 'transaction/BROADCAST_OPERATION', payload: {
+                         type: 'account_witness_proxy',
+                         operation: {account, proxy},
+                         confirm: proxy.length ? "Set proxy to: " + proxy : "You are about to remove your proxy.",
+                         successCallback: () => {
+-                            dispatch(g.actions.updateAccountWitnessProxy({account, proxy}));
++                            dispatch({type: 'global/UPDATE_ACCOUNT_WITNESS_PROXY', payload: {account, proxy}});
+                             stateCallback({proxyFailed: false, proxy: ""});
+                         },
+                         errorCallback: (e) => {
+                             console.log('error:', e);
+                             stateCallback({proxyFailed: true});
+                         }
+-                    }))
++                    }})
+                 }
+             }
+         }
+diff --git a/src/app/redux/AuthSaga.js b/src/app/redux/AuthSaga.js
+index 990303d..b7eb5fb 100644
+--- a/src/app/redux/AuthSaga.js
++++ b/src/app/redux/AuthSaga.js
+@@ -1,7 +1,6 @@
+ import {takeEvery} from 'redux-saga';
+ import {call, put, select} from 'redux-saga/effects';
+ import {Set, Map, fromJS, List} from 'immutable'
+-import user from 'app/redux/User'
+ import {getAccount} from 'app/redux/SagaShared'
+ import {PrivateKey} from 'steem/lib/auth/ecc';
+ import {api} from 'steem';
+@@ -43,7 +42,7 @@ export function* accountAuthLookup({payload: {account, private_keys, login_owner
+     }
+     const accountName = account.get('name')
+     const pub_keys_used = {posting: toPub(posting), active: toPub(active), owner: login_owner_pubkey};
+-    yield put(user.actions.setAuthority({accountName, auth, pub_keys_used}))
++    yield put({type: 'user/SET_AUTHORITY', payload: {accountName, auth, pub_keys_used}});
+ }
+ 
+ /**
+diff --git a/src/app/redux/FetchDataSaga.js b/src/app/redux/FetchDataSaga.js
+index c6a9000..ad9e597 100644
+--- a/src/app/redux/FetchDataSaga.js
++++ b/src/app/redux/FetchDataSaga.js
+@@ -2,9 +2,7 @@ import {takeLatest, takeEvery} from 'redux-saga';
+ import {call, put, select, fork} from 'redux-saga/effects';
+ import {loadFollows, fetchFollowCount} from 'app/redux/FollowSaga';
+ import {getContent} from 'app/redux/SagaShared';
+-import GlobalReducer from './GlobalReducer';
+ import constants from './constants';
+-import {fromJS, Map} from 'immutable'
+ import {api} from 'steem';
+ 
+ export const fetchDataWatches = [watchLocationChange, watchDataRequests, watchFetchJsonRequests, watchFetchState, watchGetContent];
+@@ -49,7 +47,7 @@ export function* fetchState(location_change_action) {
+     yield put({type: 'FETCH_DATA_BEGIN'});
+     try {
+         const state = yield call([api, api.getStateAsync], url)
+-        yield put(GlobalReducer.actions.receiveState(state));
++        yield put({type: 'global/RECEIVE_STATE', payload: state});
+     } catch (error) {
+         console.error('~~ Saga fetchState error ~~>', url, error);
+         yield put({type: 'global/STEEM_API_ERROR', error: error.message});
+@@ -191,7 +189,7 @@ export function* fetchData(action) {
+     yield put({type: 'FETCH_DATA_BEGIN'});
+     try {
+         const data = yield call([api, api[call_name]], ...args);
+-        yield put(GlobalReducer.actions.receiveData({data, order, category, author, permlink, accountname}));
++        yield put({type: 'global/RECEIVE_DATA', payload: {data, order, category, author, permlink, accountname}});
+     } catch (error) {
+         console.error('~~ Saga fetchData error ~~>', call_name, args, error);
+         yield put({type: 'global/STEEM_API_ERROR', error: error.message});
+@@ -237,9 +235,9 @@ export function* fetchMeta({payload: {id, link}}) {
+         if(!meta.image) {
+             meta.image = meta['twitter:image:src']
+         }
+-        yield put(GlobalReducer.actions.receiveMeta({id, meta}))
++        yield put({type: 'global/RECEIVE_META', payload: {id, meta}})
+     } catch(error) {
+-        yield put(GlobalReducer.actions.receiveMeta({id, meta: {error}}))
++        yield put({type: 'global/RECEIVE_META', payload: {id, meta: {error}}})
+     }
+ }
+ 
+@@ -265,9 +263,9 @@ function* fetchJson({payload: {id, url, body, successCallback, skipLoading = fal
+         let result = yield skipLoading ? fetch(url, payload) : call(fetch, url, payload)
+         result = yield result.json()
+         if(successCallback) result = successCallback(result)
+-        yield put(GlobalReducer.actions.fetchJsonResult({id, result}))
++        yield put({type: 'global/FETCH_JSON_RESULT', payload: {id, result}})
+     } catch(error) {
+         console.error('fetchJson', error)
+-        yield put(GlobalReducer.actions.fetchJsonResult({id, error}))
++        yield put({type: 'global/FETCH_JSON_RESULT', payload: {id, error}})
+     }
+ }
+diff --git a/src/app/redux/GlobalReducer.js b/src/app/redux/GlobalReducer.js
+index 9d91a4c..61cb66d 100644
+--- a/src/app/redux/GlobalReducer.js
++++ b/src/app/redux/GlobalReducer.js
+@@ -1,302 +1,265 @@
+ import {Map, Set, List, fromJS, Iterable} from 'immutable';
+-import createModule from 'redux-modules';
+ import {emptyContent} from 'app/redux/EmptyState';
+ import constants from './constants';
+-import {contentStats} from 'app/utils/StateFunctions'
++import {contentStats} from 'app/utils/StateFunctions';
+ 
+-const emptyContentMap = Map(emptyContent)
++const emptyContentMap = Map(emptyContent);
+ 
+-export default createModule({
+-    name: 'global',
+-    initialState: Map({status: {}}),
+-    transformations: [
+-        {
+-            action: 'SET_COLLAPSED',
+-            reducer: (state, action) => {
+-                return state.withMutations(map => {
+-                    map.updateIn(['content', action.payload.post], value => {
+-                        value.merge(Map({collapsed: action.payload.collapsed}));
+-                    });
+-                });
+-            }
+-        },
+-        {
+-            action: 'RECEIVE_STATE',
+-            reducer: (state, action) => {
+-                let payload = fromJS(action.payload)
+-                if(payload.has('content')) {
+-                    const content = payload.get('content').withMutations(c => {
+-                        c.forEach((cc, key) => {
+-                            cc = emptyContentMap.mergeDeep(cc)
+-                            const stats = fromJS(contentStats(cc))
+-                            c.setIn([key, 'stats'], stats)
+-                        })
+-                    })
+-                    payload = payload.set('content', content)
+-                }
+-                // console.log('state.mergeDeep(action.payload).toJS(), action.payload', state.mergeDeep(action.payload).toJS(), action.payload)
+-                return state.mergeDeep(payload);
+-            }
+-        },
+-        {
+-            action: 'RECEIVE_ACCOUNT',
+-            reducer: (state, {payload: {account}}) => {
+-                account = fromJS(account, (key, value) => {
+-                    if (key === 'witness_votes') return value.toSet()
+-                    const isIndexed = Iterable.isIndexed(value);
+-                    return isIndexed ? value.toList() : value.toOrderedMap();
+-                })
+-                // Merging accounts: A get_state will provide a very full account but a get_accounts will provide a smaller version
+-                return state.updateIn(['accounts', account.get('name')], Map(), a => a.mergeDeep(account))
+-            }
+-        },
+-        {
+-            action: 'RECEIVE_COMMENT',
+-            reducer: (state, {payload: op}) => {
+-                const {author, permlink, parent_author = '', parent_permlink = '', title = '', body} = op
+-                const key = author + '/' + permlink
++const defaultState = Map({status: {}});
+ 
+-                let updatedState = state.updateIn(['content', key], Map(emptyContent), r => r.merge({
+-                    author, permlink, parent_author, parent_permlink,
+-                    title: title.toString('utf-8'),
+-                    body: body.toString('utf-8'),
+-                }))
+-                // console.log('updatedState content', updatedState.getIn(['content', key]).toJS())
++export default function reducer(state = defaultState, action) {
++    const payload = action.payload;
+ 
+-                if (parent_author !== '' && parent_permlink !== '') {
+-                    const parent_key = parent_author + '/' + parent_permlink
+-                    updatedState = updatedState.updateIn(['content', parent_key, 'replies'], List(), r => r.insert(0, key))
+-                    const children = updatedState.getIn(['content', parent_key, 'replies'], List()).size;
+-                    updatedState = updatedState.updateIn(['content', parent_key, 'children'], 0, r => children)
+-                    // console.log('updatedState parent', updatedState.toJS())
+-                }
+-                return updatedState
+-            }
+-        },
+-        {
+-            action: 'RECEIVE_CONTENT',
+-            reducer: (state, {payload: {content}}) => {
+-                // console.log('GlobalReducer -- RECEIVE_CONTENT content', content)
+-                content = fromJS(content)
+-                const key = content.get('author') + '/' + content.get('permlink')
+-                return state.updateIn(['content', key], Map(), c => {
+-                    c = emptyContentMap.mergeDeep(c)
+-                    c = c.delete('active_votes')
+-                    c = c.mergeDeep(content)
+-                    c = c.set('stats', fromJS(contentStats(c)))
+-                    return c
++    if (action.type === 'global/SET_COLLAPSED') {
++        return state.withMutations(map => {
++            map.updateIn(['content', payload.post], value => {
++                value.merge(Map({collapsed: payload.collapsed}));
++            });
++        });
++    }
++
++    if (action.type === 'global/RECEIVE_STATE') {
++        let new_state = fromJS(payload)
++        if(new_state.has('content')) {
++            const content = new_state.get('content').withMutations(c => {
++                c.forEach((cc, key) => {
++                    cc = emptyContentMap.mergeDeep(cc)
++                    const stats = fromJS(contentStats(cc))
++                    c.setIn([key, 'stats'], stats)
+                 })
+-            }
+-        },
+-        { // works...
+-            action: 'LINK_REPLY',
+-            reducer: (state, {payload: op}) => {
+-                const {author, permlink, parent_author = '', parent_permlink = ''} = op
+-                if (parent_author === '' || parent_permlink === '') return state
+-                const key = author + '/' + permlink
+-                const parent_key = parent_author + '/' + parent_permlink
+-                // Add key if not exist
+-                let updatedState = state.updateIn(['content', parent_key, 'replies'], List(),
+-                    l => (l.findIndex(i => i === key) === -1 ? l.push(key) : l))
+-                const children = updatedState.getIn(['content', parent_key, 'replies'], List()).size;
+-                updatedState = updatedState.updateIn(['content', parent_key, 'children'], 0, r => children)
+-                return updatedState;
+-            }
+-        },
+-        { // works...
+-            action: 'UPDATE_ACCOUNT_WITNESS_VOTE',
+-            reducer: (state, {payload: {account, witness, approve}}) =>
+-                state.updateIn(['accounts', account, 'witness_votes'], Set(),
+-                    votes => (approve ? Set(votes).add(witness) : Set(votes).remove(witness)))
+-        },
+-        { // works...
+-            action: 'UPDATE_ACCOUNT_WITNESS_PROXY',
+-            reducer: (state, {payload: {account, proxy}}) =>
+-                    state.setIn(['accounts', account, 'proxy'], proxy)
+-        },
+-        {
+-            action: 'DELETE_CONTENT',
+-            reducer: (state, {payload: {author, permlink}}) => {
+-                const key = author + '/' + permlink
+-                const content = state.getIn(['content', key])
+-                const parent_author = content.get('parent_author') || ''
+-                const parent_permlink = content.get('parent_permlink') || ''
+-                let updatedState = state.deleteIn(['content', key])
+-                if (parent_author !== '' && parent_permlink !== '') {
+-                    const parent_key = parent_author + '/' + parent_permlink
+-                    updatedState = updatedState.updateIn(['content', parent_key, 'replies'],
+-                        List(), r => r.filter(i => i !== key))
+-                }
+-                return updatedState
+-            }
+-        },
+-        {
+-            action: 'VOTED',
+-            reducer: (state, {payload: {username, author, permlink, weight}}) => {
+-                const key = ['content', author + '/' + permlink, 'active_votes']
+-                let active_votes = state.getIn(key, List())
+-                const idx = active_votes.findIndex(v => v.get('voter') === username)
+-                // steemd flips weight into percent
+-                if(idx === -1)
+-                    active_votes = active_votes.push(Map({voter: username, percent: weight}));
+-                else {
+-                    active_votes = active_votes.set(idx, Map({voter: username, percent: weight}));
+-                }
+-                state.setIn(key, active_votes);
+-                return state;
+-            }
+-        },
+-        {
+-            action: 'FETCHING_DATA',
+-            reducer: (state, {payload: {order, category}}) => {
+-                const new_state = state.updateIn(['status', category || '', order], () => {
+-                    return {fetching: true};
+-                });
+-                return new_state;
+-            }
+-        },
+-        {
+-            action: 'RECEIVE_DATA',
+-            reducer: (state, {payload: {data, order, category, author, accountname, /*permlink*/}}) => {
+-                // console.log('-- RECEIVE_DATA reducer -->', order, category, author, permlink, data);
+-                // console.log('-- RECEIVE_DATA state -->', state.toJS());
+-                let new_state;
+-                if (order === 'by_author' || order === 'by_feed' || order === 'by_comments' || order === 'by_replies') {
+-                    // category is either "blog", "feed", "comments", or "recent_replies" (respectively) -- and all posts are keyed under current profile
+-                    const key = ['accounts', accountname, category]
+-                    new_state = state.updateIn(key, List(), list => {
+-                        return list.withMutations(posts => {
+-                            data.forEach(value => {
+-                                const key2 = `${value.author}/${value.permlink}`
+-                                if (!posts.includes(key2)) posts.push(key2);
+-                            });
+-                        });
+-                    });
+-                } else {
+-                    new_state = state.updateIn(['discussion_idx', category || '', order], list => {
+-                        return list.withMutations(posts => {
+-                            data.forEach(value => {
+-                                const entry = `${value.author}/${value.permlink}`;
+-                                if (!posts.includes(entry)) posts.push(entry);
+-                            });
+-                        });
++            })
++            new_state = new_state.set('content', content)
++        }
++        return state.mergeDeep(new_state);
++    }
++
++    if (action.type === 'global/RECEIVE_ACCOUNT') {
++        const account = fromJS(payload.account, (key, value) => {
++            if (key === 'witness_votes') return value.toSet()
++            const isIndexed = Iterable.isIndexed(value);
++            return isIndexed ? value.toList() : value.toOrderedMap();
++        })
++        // Merging accounts: A get_state will provide a very full account but a get_accounts will provide a smaller version
++        return state.updateIn(['accounts', account.get('name')], Map(), a => a.mergeDeep(account));
++    }
++
++    if (action.type === 'global/RECEIVE_COMMENT') {
++        const {author, permlink, parent_author = '', parent_permlink = '', title = '', body} = payload.op;
++        const key = author + '/' + permlink;
++        let updatedState = state.updateIn(['content', key], Map(emptyContent), r => r.merge({
++            author, permlink, parent_author, parent_permlink,
++            title: title.toString('utf-8'),
++            body: body.toString('utf-8'),
++        }));
++        if (parent_author !== '' && parent_permlink !== '') {
++            const parent_key = parent_author + '/' + parent_permlink;
++            updatedState = updatedState.updateIn(['content', parent_key, 'replies'], List(), r => r.insert(0, key));
++            const children = updatedState.getIn(['content', parent_key, 'replies'], List()).size;
++            updatedState = updatedState.updateIn(['content', parent_key, 'children'], 0, () => children);
++        }
++        return updatedState;
++    }
++
++    if (action.type === 'global/RECEIVE_CONTENT') {
++        const content = fromJS(payload.content)
++        const key = content.get('author') + '/' + content.get('permlink')
++        return state.updateIn(['content', key], Map(), c => {
++            c = emptyContentMap.mergeDeep(c)
++            c = c.delete('active_votes')
++            c = c.mergeDeep(content)
++            c = c.set('stats', fromJS(contentStats(c)))
++            return c
++        });
++    }
++
++    if (action.type === 'global/LINK_REPLY') {
++        const {author, permlink, parent_author = '', parent_permlink = ''} = payload;
++        if (parent_author === '' || parent_permlink === '') return state;
++        const key = author + '/' + permlink;
++        const parent_key = parent_author + '/' + parent_permlink;
++        // Add key if not exist
++        let updatedState = state.updateIn(['content', parent_key, 'replies'], List(),
++            l => (l.findIndex(i => i === key) === -1 ? l.push(key) : l))
++        const children = updatedState.getIn(['content', parent_key, 'replies'], List()).size;
++        updatedState = updatedState.updateIn(['content', parent_key, 'children'], 0, () => children);
++        return updatedState;
++    }
++
++    if (action.type === 'global/UPDATE_ACCOUNT_WITNESS_VOTE') {
++        const {account, witness, approve} = payload;
++        return state.updateIn(['accounts', account, 'witness_votes'], Set(),
++            votes => (approve ? Set(votes).add(witness) : Set(votes).remove(witness)));
++    }
++
++    if (action.type === 'global/UPDATE_ACCOUNT_WITNESS_PROXY') {
++        const {account, proxy} = payload;
++        return state.setIn(['accounts', account, 'proxy'], proxy);
++    }
++
++    if (action.type === 'global/DELETE_CONTENT') {
++        const {author, permlink} = payload;
++        const key = author + '/' + permlink
++        const content = state.getIn(['content', key])
++        const parent_author = content.get('parent_author') || ''
++        const parent_permlink = content.get('parent_permlink') || ''
++        let updatedState = state.deleteIn(['content', key])
++        if (parent_author !== '' && parent_permlink !== '') {
++            const parent_key = parent_author + '/' + parent_permlink
++            updatedState = updatedState.updateIn(['content', parent_key, 'replies'],
++                List(), r => r.filter(i => i !== key))
++        }
++        return updatedState;
++    }
++
++    if (action.type === 'global/VOTED') {
++        const {username, author, permlink, weight} = payload;
++        const key = ['content', author + '/' + permlink, 'active_votes'];
++        let active_votes = state.getIn(key, List());
++        const idx = active_votes.findIndex(v => v.get('voter') === username);
++        // steemd flips weight into percent
++        if(idx === -1) {
++            active_votes = active_votes.push(Map({voter: username, percent: weight}));
++        } else {
++            active_votes = active_votes.set(idx, Map({voter: username, percent: weight}));
++        }
++        state.setIn(key, active_votes);
++        return state;
++    }
++
++    if (action.type === 'global/FETCHING_DATA') {
++        const {order, category} = payload;
++        const new_state = state.updateIn(['status', category || '', order], () => {
++            return {fetching: true};
++        });
++        return new_state;
++    }
++
++    if (action.type === 'global/RECEIVE_DATA') {
++        const {data, order, category, accountname} = payload;
++        let new_state;
++        if (order === 'by_author' || order === 'by_feed' || order === 'by_comments' || order === 'by_replies') {
++            // category is either "blog", "feed", "comments", or "recent_replies" (respectively) -- and all posts are keyed under current profile
++            const key = ['accounts', accountname, category]
++            new_state = state.updateIn(key, List(), list => {
++                return list.withMutations(posts => {
++                    data.forEach(value => {
++                        const key2 = `${value.author}/${value.permlink}`
++                        if (!posts.includes(key2)) posts.push(key2);
+                     });
+-                }
+-                new_state = new_state.updateIn(['content'], content => {
+-                    return content.withMutations(map => {
+-                        data.forEach(value => {
+-                            // console.log('GlobalReducer -- RECEIVE_DATA', value)
+-                            const key = `${value.author}/${value.permlink}`;
+-                            value = fromJS(value)
+-                            value = value.set('stats', fromJS(contentStats(value)))
+-                            map.set(key, value);
+-                        });
++                });
++            });
++        } else {
++            new_state = state.updateIn(['discussion_idx', category || '', order], list => {
++                return list.withMutations(posts => {
++                    data.forEach(value => {
++                        const entry = `${value.author}/${value.permlink}`;
++                        if (!posts.includes(entry)) posts.push(entry);
+                     });
+                 });
+-                new_state = new_state.updateIn(['status', category || '', order], () => {
+-                    if (data.length < constants.FETCH_DATA_BATCH_SIZE) {
+-                        return {fetching: false, last_fetch: new Date()};
+-                    }
+-                    return {fetching: false};
++            });
++        }
++        new_state = new_state.updateIn(['content'], content => {
++            return content.withMutations(map => {
++                data.forEach(value => {
++                    const key = `${value.author}/${value.permlink}`;
++                    value = fromJS(value)
++                    value = value.set('stats', fromJS(contentStats(value)))
++                    map.set(key, value);
+                 });
+-                // console.log('-- new_state -->', new_state.toJS());
+-                return new_state;
++            });
++        });
++        new_state = new_state.updateIn(['status', category || '', order], () => {
++            if (data.length < constants.FETCH_DATA_BATCH_SIZE) {
++                return {fetching: false, last_fetch: new Date()};
+             }
+-        },
+-        {
+-            action: 'RECEIVE_RECENT_POSTS',
+-            reducer: (state, {payload: {data}}) => {
+-                // console.log('-- RECEIVE_RECENT_POSTS state -->', state.toJS());
+-                // console.log('-- RECEIVE_RECENT_POSTS reducer -->', data);
+-                let new_state = state.updateIn(['discussion_idx', '', 'created'], list => {
+-                    if (!list) list = List();
+-                    return list.withMutations(posts => {
+-                        data.forEach(value => {
+-                            const entry = `${value.author}/${value.permlink}`;
+-                            if (!posts.includes(entry)) posts.unshift(entry);
+-                        });
+-                    });
++            return {fetching: false};
++        });
++        return new_state;
++    }
++
++    if (action.type === 'global/RECEIVE_RECENT_POSTS') {
++        const {data} = payload;
++        let new_state = state.updateIn(['discussion_idx', '', 'created'], list => {
++            if (!list) list = List();
++            return list.withMutations(posts => {
++                data.forEach(value => {
++                    const entry = `${value.author}/${value.permlink}`;
++                    if (!posts.includes(entry)) posts.unshift(entry);
+                 });
+-                new_state = new_state.updateIn(['content'], content => {
+-                    return content.withMutations(map => {
+-                        data.forEach(value => {
+-                            const key = `${value.author}/${value.permlink}`;
+-                            if (!map.has(key)) {
+-                                value = fromJS(value)
+-                                value = value.set('stats', fromJS(contentStats(value)))
+-                                map.set(key, value);
+-                            }
+-                        });
+-                    });
++            });
++        });
++        new_state = new_state.updateIn(['content'], content => {
++            return content.withMutations(map => {
++                data.forEach(value => {
++                    const key = `${value.author}/${value.permlink}`;
++                    if (!map.has(key)) {
++                        value = fromJS(value)
++                        value = value.set('stats', fromJS(contentStats(value)))
++                        map.set(key, value);
++                    }
+                 });
+-                // console.log('-- new_state -->', new_state.toJS());
+-                return new_state;
+-            }
+-        },
+-        {
+-            action: 'REQUEST_META', // browser console debug
+-            reducer: (state, {payload: {id, link}}) =>
+-                state.setIn(['metaLinkData', id], Map({link}))
+-        },
+-        {
+-            action: 'RECEIVE_META', // browser console debug
+-            reducer: (state, {payload: {id, meta}}) =>
+-                state.updateIn(['metaLinkData', id], data => data.merge(meta))
+-        },
+-        {
+-            action: 'SET',
+-            reducer: (state, {payload: {key, value}}) => {
+-                key = Array.isArray(key) ? key : [key]
+-                return state.setIn(key, fromJS(value))
+-            }
+-        },
+-        {
+-            action: 'REMOVE',
+-            reducer: (state, {payload: {key}}) => {
+-                key = Array.isArray(key) ? key : [key]
+-                return state.removeIn(key)
+-            }
+-        },
+-        {
+-            action: 'UPDATE',
+-            reducer: (state, {payload: {key, notSet = Map(), updater}}) =>
+-                // key = Array.isArray(key) ? key : [key] // TODO enable and test
+-                state.updateIn(key, notSet, updater)
+-        },
+-        {
+-            action: 'SET_META_DATA', // browser console debug
+-            reducer: (state, {payload: {id, meta}}) =>
+-                state.setIn(['metaLinkData', id], fromJS(meta))
+-        },
+-        {
+-            action: 'CLEAR_META', // browser console debug
+-            reducer: (state, {payload: {id}}) =>
+-                state.deleteIn(['metaLinkData', id])
+-        },
+-        {
+-            action: 'CLEAR_META_ELEMENT', // browser console debug
+-            reducer: (state, {payload: {formId, element}}) =>
+-                state.updateIn(['metaLinkData', formId], data => data.remove(element))
+-        },
+-        {
+-            action: 'FETCH_JSON',
+-            reducer: state => state // saga
+-        },
+-        {
+-            action: 'FETCH_JSON_RESULT',
+-            reducer: (state, {payload: {id, result, error}}) =>
+-                state.set(id, fromJS({result, error}))
+-        },
+-        {
+-            action: 'SHOW_DIALOG',
+-            reducer: (state, {payload: {name, params = {}}}) =>
+-                state.update('active_dialogs', Map(), d => d.set(name, fromJS({params})))
+-        },
+-        {
+-            action: 'HIDE_DIALOG',
+-            reducer: (state, {payload: {name}}) =>
+-                state.update('active_dialogs', d => d.delete(name))
+-        },
++            });
++        });
++        return new_state;
++    }
++
++    if (action.type === 'global/REQUEST_META') {
++        const {id, link} = payload;
++        return state.setIn(['metaLinkData', id], Map({link}));
++    }
++
++    if (action.type === 'global/RECEIVE_META') {
++        const {id, meta} = payload;
++        return state.updateIn(['metaLinkData', id], data => data.merge(meta));
++    }
++
++    if (action.type === 'global/SET') {
++        const {key, value} = payload;
++        const key_array = Array.isArray(key) ? key : [key];
++        return state.setIn(key_array, fromJS(value));
++    }
++
++    if (action.type === 'global/REMOVE') {
++        const key = Array.isArray(payload.key) ? payload.key : [payload.key];
++        return state.removeIn(key);
++    }
++
++    if (action.type === 'global/UPDATE') {
++        const {key, notSet = Map(), updater} = payload;
++        return state.updateIn(key, notSet, updater);
++    }
++
++    if (action.type === 'global/SET_META_DATA') {
++        const {id, meta} = payload;
++        return state.setIn(['metaLinkData', id], fromJS(meta));
++    }
++
++    if (action.type === 'global/CLEAR_META') {
++        return state.deleteIn(['metaLinkData', payload.id]);
++    }
++
++    if (action.type === 'global/CLEAR_META_ELEMENT') {
++        const {formId, element} = payload;
++        return state.updateIn(['metaLinkData', formId], data => data.remove(element));
++    }
++
++    if (action.type === 'global/FETCH_JSON') {
++        return state;
++    }
++
++    if (action.type === 'global/FETCH_JSON_RESULT') {
++        const {id, result, error} = payload;
++        return state.set(id, fromJS({result, error}));
++    }
++
++    if (action.type === 'global/SHOW_DIALOG') {
++        const {name, params = {}} = payload;
++        return state.update('active_dialogs', Map(), d => d.set(name, fromJS({params})));
++    }
++
++    if (action.type === 'global/HIDE_DIALOG') {
++        return state.update('active_dialogs', d => d.delete(payload.name));
++    }
+ 
+-    ]
+-});
++    return state;
++}
+diff --git a/src/app/redux/MarketReducer.js b/src/app/redux/MarketReducer.js
+index 719acd8..f0b3340 100644
+--- a/src/app/redux/MarketReducer.js
++++ b/src/app/redux/MarketReducer.js
+@@ -1,40 +1,29 @@
+ import {Map} from 'immutable';
+-import createModule from 'redux-modules';
+-
+-
+-export default createModule({
+-    name: 'market',
+-    initialState: Map({status: {}}),
+-    transformations: [
+-        {
+-            action: 'RECEIVE_ORDERBOOK',
+-            reducer: (state, action) => {
+-                return state.set('orderbook', action.payload);
+-            }
+-        },
+-        {
+-            action: 'RECEIVE_TICKER',
+-            reducer: (state, action) => {
+-                return state.set('ticker', action.payload);
+-            }
+-        },
+-        {
+-            action: 'RECEIVE_OPEN_ORDERS',
+-            reducer: (state, action) => {
+-                return state.set('open_orders', action.payload);
+-            }
+-        },
+-        {
+-            action: 'RECEIVE_TRADE_HISTORY',
+-            reducer: (state, action) => {
+-                return state.set('history', action.payload);
+-            }
+-        },
+-        {
+-            action: 'APPEND_TRADE_HISTORY',
+-            reducer: (state, action) => {
+-                return state.set('history', [...action.payload, ...state.get('history')]);
+-            }
+-        }
+-    ]
+-});
++
++const defaultState = Map({status: {}});
++
++export default function reducer(state = defaultState, action) {
++    const payload = action.payload;
++
++    if (action.type === 'market/RECEIVE_ORDERBOOK') {
++        return state.set('orderbook', payload);
++    }
++
++    if (action.type === 'market/RECEIVE_TICKER') {
++        return state.set('ticker', payload);
++    }
++
++    if (action.type === 'market/RECEIVE_OPEN_ORDERS') {
++        return state.set('open_orders', payload);
++    }
++
++    if (action.type === 'market/RECEIVE_TRADE_HISTORY') {
++        return state.set('history', payload);
++    }
++
++    if (action.type === 'market/APPEND_TRADE_HISTORY') {
++        return state.set('history', [...payload, ...state.get('history')]);
++    }
++
++    return state;
++}
+diff --git a/src/app/redux/MarketSaga.js b/src/app/redux/MarketSaga.js
+index b51b5ce..ac226da 100644
+--- a/src/app/redux/MarketSaga.js
++++ b/src/app/redux/MarketSaga.js
+@@ -1,6 +1,5 @@
+ import {takeLatest} from 'redux-saga';
+ import {call, put} from 'redux-saga/effects';
+-import MarketReducer from './MarketReducer';
+ import {getAccount} from './SagaShared';
+ import {api} from 'steem';
+ 
+@@ -29,24 +28,24 @@ export function* fetchMarket(location_change_action) {
+ 
+         try {
+             const state = yield call([api, api.getOrderBookAsync], 500);
+-            yield put(MarketReducer.actions.receiveOrderbook(state));
++            yield put({type: 'market/RECEIVE_ORDERBOOK', payload: state});
+ 
+             let trades;
+             if(last_trade == null ) {
+                 trades = yield call([api, api.getRecentTradesAsync], 25);
+-                yield put(MarketReducer.actions.receiveTradeHistory(trades));
++                yield put({type: 'market/RECEIVE_TRADE_HISTORY', payload: trades});
+             } else {
+                 let start = last_trade.toISOString().slice(0, -5)
+                 trades = yield call([api, api.getTradeHistoryAsync], start, "1969-12-31T23:59:59", 1000);
+                 trades = trades.reverse()
+-                yield put(MarketReducer.actions.appendTradeHistory(trades));
++                yield put({type: 'market/APPEND_TRADE_HISTORY', payload: trades});
+             }
+             if(trades.length > 0) {
+               last_trade = new Date((new Date(Date.parse(trades[0]['date']))).getTime() + 1000)
+             }
+ 
+             const state3 = yield call([api, api.getTickerAsync]);
+-            yield put(MarketReducer.actions.receiveTicker(state3));
++            yield put({type: 'market/RECEIVE_TICKER', payload: state3});
+         } catch (error) {
+             console.error('~~ Saga fetchMarket error ~~>', error);
+             yield put({type: 'global/STEEM_API_ERROR', error: error.message});
+@@ -61,7 +60,7 @@ export function* fetchOpenOrders(set_user_action) {
+ 
+     try {
+         const state = yield call([api, api.getOpenOrdersAsync], username);
+-        yield put(MarketReducer.actions.receiveOpenOrders(state));
++        yield put({type: 'market/RECEIVE_OPEN_ORDERS', payload: state});
+         yield call(getAccount, username, true);
+     } catch (error) {
+         console.error('~~ Saga fetchOpenOrders error ~~>', error);
+diff --git a/src/app/redux/PollDataSaga.js b/src/app/redux/PollDataSaga.js
+index 5f676d1..467c674 100644
+--- a/src/app/redux/PollDataSaga.js
++++ b/src/app/redux/PollDataSaga.js
+@@ -1,5 +1,4 @@
+ import { call, put, select } from 'redux-saga/effects';
+-import GlobalReducer from './GlobalReducer';
+ import {getNotifications, webPushRegister} from 'app/utils/ServerApiClient';
+ import registerServiceWorker from 'app/utils/RegisterServiceWorker';
+ import {api} from 'steem';
+@@ -32,10 +31,7 @@ function* pollData() {
+         }
+ 
+         try {
+-            const data = yield call([api, api.getDynamicGlobalPropertiesAsync]);
+-            // console.log('-- pollData.pollData -->', data);
+-            // const data = yield call([api, api.getDiscussionsByCreatedAsync], {limit: 10});
+-            // yield put(GlobalReducer.actions.receiveRecentPosts({data}));
++            yield call([api, api.getDynamicGlobalPropertiesAsync]);
+         } catch (error) {
+             console.error('~~ pollData saga error ~~>', error);
+         }
+diff --git a/src/app/redux/RootReducer.js b/src/app/redux/RootReducer.js
+index 5743bdd..8fe0c6c 100644
+--- a/src/app/redux/RootReducer.js
++++ b/src/app/redux/RootReducer.js
+@@ -2,12 +2,10 @@ import {Map, fromJS} from 'immutable';
+ import {combineReducers} from 'redux';
+ import {routerReducer} from 'react-router-redux';
+ import appReducer from './AppReducer';
+-//import discussionReducer from './DiscussionReducer';
+-import globalReducerModule from './GlobalReducer';
+-import marketReducerModule from './MarketReducer';
+-import user from './User';
+-// import auth from './AuthSaga';
+-import transaction from './Transaction';
++import globalReducer from './GlobalReducer';
++import marketReducer from './MarketReducer';
++import userReducer from './UserReducer';
++import transactionReducer from './TransactionReducer';
+ import offchain from './Offchain';
+ import {reducer as formReducer} from 'redux-form'; // @deprecated, instead use: app/utils/ReactForm.js
+ import {contentStats} from 'app/utils/StateFunctions'
+@@ -47,21 +45,13 @@ function initReducer(reducer, type) {
+ }
+ 
+ export default combineReducers({
+-    global: initReducer(globalReducerModule.reducer, 'global'),
+-    market: initReducer(marketReducerModule.reducer),
++    global: initReducer(globalReducer, 'global'),
++    market: initReducer(marketReducer),
+     offchain: initReducer(offchain),
+-    user: initReducer(user.reducer),
+-    // auth: initReducer(auth.reducer),
+-    transaction: initReducer(transaction.reducer),
+-    //discussion: initReducer(discussionReducer),
++    user: initReducer(userReducer),
++    transaction: initReducer(transactionReducer),
+     discussion: initReducer((state = {}) => state),
+     routing: initReducer(routerReducer),
+     app: initReducer(appReducer),
+     form: formReducer,
+ });
+-
+-/*
+-let now
+-    benchStart: initReducer((state = {}, action) => {console.log('>> action.type', action.type); now = Date.now(); return state}),
+-    benchEnd: initReducer((state = {}, action) => {console.log('<< action.type', action.type, (Date.now() - now), 'ms'); return state}),
+-*/
+diff --git a/src/app/redux/SagaShared.js b/src/app/redux/SagaShared.js
+index 7d99ce9..6436636 100644
+--- a/src/app/redux/SagaShared.js
++++ b/src/app/redux/SagaShared.js
+@@ -1,6 +1,5 @@
+ import {fromJS} from 'immutable'
+ import {call, put, select} from 'redux-saga/effects';
+-import g from 'app/redux/GlobalReducer'
+ import {takeEvery, takeLatest} from 'redux-saga';
+ import tt from 'counterpart';
+ import {api} from 'steem';
+@@ -20,7 +19,7 @@ export function* getAccount(username, force = false) {
+         [account] = yield call([api, api.getAccountsAsync], [username])
+         if(account) {
+             account = fromJS(account)
+-            yield put(g.actions.receiveAccount({account}))
++            yield put({type: 'global/RECEIVE_ACCOUNT', payload: {account}})
+         }
+     }
+     return account
+@@ -33,7 +32,7 @@ export function* watchGetState() {
+ export function* getState({payload: {url}}) {
+     try {
+         const state = yield call([api, api.getStateAsync], url)
+-        yield put(g.actions.receiveState(state));
++        yield put({type: 'global/RECEIVE_STATE', payload: state});
+     } catch (error) {
+         console.error('~~ Saga getState error ~~>', url, error);
+         yield put({type: 'global/STEEM_API_ERROR', error: error.message});
+@@ -62,7 +61,8 @@ export function* getContent({author, permlink, resolve, reject}) {
+         }
+     }
+ 
+-    yield put(g.actions.receiveContent({content}))
++    yield put({type: 'global/RECEIVE_CONTENT', payload: {content}});
++
+     if (resolve && content) {
+         resolve(content);
+     } else if (reject && !content) {
+diff --git a/src/app/redux/Transaction.js b/src/app/redux/Transaction.js
+deleted file mode 100644
+index 435e1a0..0000000
+--- a/src/app/redux/Transaction.js
++++ /dev/null
+@@ -1,140 +0,0 @@
+-import {fromJS, Map} from 'immutable';
+-import createModule from 'redux-modules';
+-
+-export default createModule({
+-    name: 'transaction',
+-    initialState: fromJS({
+-        operations: [],
+-        status: { key: '', error: false, busy: false, },
+-        errors: null
+-    }),
+-    transformations: [
+-        {
+-            action: 'CONFIRM_OPERATION',
+-            reducer: (state, {payload}) => {
+-                const operation = fromJS(payload.operation)
+-                const confirm = payload.confirm
+-                const warning = payload.warning
+-                const checkbox = payload.checkbox
+-                return state.merge({
+-                    show_confirm_modal: true,
+-                    confirmBroadcastOperation: operation,
+-                    confirmErrorCallback: payload.errorCallback,
+-                    confirm,
+-                    warning,
+-                    checkbox
+-                })
+-            }
+-        },
+-        { action: 'HIDE_CONFIRM', reducer: state =>
+-            state.merge({show_confirm_modal: false, confirmBroadcastOperation: undefined, confirm: undefined})
+-        },
+-        {
+-            // An error will end up in QUEUE
+-            action: 'BROADCAST_OPERATION',
+-            reducer: (state) => {//, {payload: {type, operation, keys}}
+-                // See TransactionSaga.js
+-                return state
+-            },
+-        },
+-        {
+-            // An error will end up in QUEUE
+-            action: 'UPDATE_AUTHORITIES',
+-            reducer: (state) => state,
+-        },
+-        {
+-            // An error will end up in QUEUE
+-            action: 'UPDATE_META',
+-            reducer: (state) => state,
+-        },
+-        {
+-            action: 'ERROR',
+-            reducer: (state, {payload: {operations, error, errorCallback}}) => {
+-                let errorStr = error.toString();
+-                let errorKey = 'Transaction broadcast error.';
+-                for (const [type/*, operation*/] of operations) {
+-                    switch (type) {
+-                    case 'vote':
+-                        if (/uniqueness constraint/.test(errorStr)) {
+-                            errorKey = 'You already voted for this post';
+-                            console.error('You already voted for this post.')
+-                        }
+-                        break;
+-                    case 'comment':
+-                        if (/You may only post once per minute/.test(errorStr)) {
+-                            errorKey = 'You may only post once per minute.'
+-                        } else if (errorStr === 'Testing, fake error')
+-                            errorKey = 'Testing, fake error';
+-                        break;
+-                    case 'transfer':
+-                        if (/get_balance/.test(errorStr)) {
+-                            errorKey = 'Insufficient balance.'
+-                        }
+-                        break;
+-                    case 'withdraw_vesting':
+-                        if(/Account registered by another account requires 10x account creation fee worth of Steem Power/.test(errorStr))
+-                            errorKey = 'Account requires 10x the account creation fee in Steem Power (approximately 300 SP) before it can power down.'
+-                        break;
+-                    default:
+-                        break;
+-                    }
+-                    if (state.hasIn(['TransactionError', type + '_listener'])) {
+-                        state = state.setIn(['TransactionError', type], fromJS({key: errorKey, exception: errorStr}))
+-                    } else {
+-                        if (error.message) {
+-                            // Depends on FC_ASSERT formatting
+-                            // https://github.com/steemit/steemit.com/issues/222
+-                            const err_lines = error.message.split('\n');
+-                            if (err_lines.length > 2) {
+-                                errorKey = err_lines[1];
+-                                const txt = errorKey.split(': ');
+-                                if(txt.length && txt[txt.length - 1].trim() !== '') {
+-                                    errorKey = errorStr = txt[txt.length - 1]
+-                                } else
+-                                    errorStr = `Transaction failed: ${err_lines[1]}`;
+-                            }
+-                        }
+-                        if (errorStr.length > 200) errorStr = errorStr.substring(0, 200);
+-                        // Catch for unknown key better error handling
+-                        if (/unknown key: /.test(errorKey)) {
+-                            errorKey = "Steem account doesn't exist.";
+-                            errorStr = "Transaction failed: Steem account doesn't exist.";
+-                        }
+-                        // Catch for invalid active authority
+-                        if (/Missing Active Authority /.test(errorKey)) {
+-                            errorKey = "Not your valid active key.";
+-                            errorStr = "Transaction failed: Not your valid active key.";
+-                        }
+-                        state = state.update('errors', errors => {
+-                            return errors ? errors.set(errorKey, errorStr) : Map({[errorKey]: errorStr});
+-                        });
+-                    }
+-                }
+-                if (errorCallback) try { errorCallback(errorKey) } catch (error2) { console.error(error2) }
+-                return state
+-            },
+-        },
+-        {
+-            action: 'DELETE_ERROR',
+-            reducer: (state, {payload: {key}}) => {
+-                return state.deleteIn(['errors', key]);
+-            }
+-        },
+-        {
+-            action: 'SET',
+-            reducer: (state, {payload: {key, value}}) => {
+-                key = Array.isArray(key) ? key : [key]
+-                return state.setIn(key, fromJS(value))
+-            }
+-        },
+-        {
+-            action: 'REMOVE',
+-            reducer: (state, {payload: {key}}) => {
+-                key = Array.isArray(key) ? key : [key]
+-                return state.removeIn(key)
+-            }
+-        },
+-    ]
+-});
+-
+-// const log = v => {console.log('l', v); return v}
+diff --git a/src/app/redux/TransactionReducer.js b/src/app/redux/TransactionReducer.js
+new file mode 100644
+index 0000000..ba679a8
+--- /dev/null
++++ b/src/app/redux/TransactionReducer.js
+@@ -0,0 +1,123 @@
++import {fromJS, Map} from 'immutable';
++
++const defaultState = fromJS({
++    operations: [],
++    status: { key: '', error: false, busy: false, },
++    errors: null
++});
++
++export default function reducer(state = defaultState, action) {
++    const payload = action.payload;
++
++    if (action.type === 'transaction/CONFIRM_OPERATION') {
++        const operation = fromJS(payload.operation);
++        const confirm = payload.confirm;
++        const warning = payload.warning;
++        return state.merge({
++            show_confirm_modal: true,
++            confirmBroadcastOperation: operation,
++            confirmErrorCallback: payload.errorCallback,
++            confirm,
++            warning
++        });
++    }
++
++    if (action.type === 'transaction/HIDE_CONFIRM') {
++        return state.merge({show_confirm_modal: false, confirmBroadcastOperation: undefined, confirm: undefined});
++    }
++
++    if (action.type === 'transaction/BROADCAST_OPERATION') {
++        // See TransactionSaga.js
++        return state;
++    }
++
++    if (action.type === 'transaction/UPDATE_AUTHORITIES') {
++        return state;
++    }
++
++    if (action.type === 'transaction/UPDATE_META') {
++        return state;
++    }
++
++    if (action.type === 'transaction/ERROR') {
++        const {operations, error, errorCallback} = payload;
++        let errorStr = error.toString();
++        let errorKey = 'Transaction broadcast error.';
++        for (const [type/*, operation*/] of operations) {
++            switch (type) {
++                case 'vote':
++                    if (/uniqueness constraint/.test(errorStr)) {
++                        errorKey = 'You already voted for this post';
++                        console.error('You already voted for this post.')
++                    }
++                    break;
++                case 'comment':
++                    if (/You may only post once per minute/.test(errorStr)) {
++                        errorKey = 'You may only post once per minute.'
++                    } else if (errorStr === 'Testing, fake error')
++                        errorKey = 'Testing, fake error';
++                    break;
++                case 'transfer':
++                    if (/get_balance/.test(errorStr)) {
++                        errorKey = 'Insufficient balance.'
++                    }
++                    break;
++                case 'withdraw_vesting':
++                    if(/Account registered by another account requires 10x account creation fee worth of Steem Power/.test(errorStr))
++                        errorKey = 'Account requires 10x the account creation fee in Steem Power (approximately 300 SP) before it can power down.'
++                    break;
++                default:
++                    break;
++            }
++            if (state.hasIn(['TransactionError', type + '_listener'])) {
++                state = state.setIn(['TransactionError', type], fromJS({key: errorKey, exception: errorStr}))
++            } else {
++                if (error.message) {
++                    // Depends on FC_ASSERT formatting
++                    // https://github.com/steemit/steemit.com/issues/222
++                    const err_lines = error.message.split('\n');
++                    if (err_lines.length > 2) {
++                        errorKey = err_lines[1];
++                        const txt = errorKey.split(': ');
++                        if(txt.length && txt[txt.length - 1].trim() !== '') {
++                            errorKey = errorStr = txt[txt.length - 1]
++                        } else
++                            errorStr = `Transaction failed: ${err_lines[1]}`;
++                    }
++                }
++                if (errorStr.length > 200) errorStr = errorStr.substring(0, 200);
++                // Catch for unknown key better error handling
++                if (/unknown key: /.test(errorKey)) {
++                    errorKey = "Steem account doesn't exist.";
++                    errorStr = "Transaction failed: Steem account doesn't exist.";
++                }
++                // Catch for invalid active authority
++                if (/Missing Active Authority /.test(errorKey)) {
++                    errorKey = "Not your valid active key.";
++                    errorStr = "Transaction failed: Not your valid active key.";
++                }
++                state = state.update('errors', errors => {
++                    return errors ? errors.set(errorKey, errorStr) : Map({[errorKey]: errorStr});
++                });
++            }
++        }
++        if (errorCallback) try { errorCallback(errorKey) } catch (error2) { console.error(error2) }
++        return state
++    }
++
++    if (action.type === 'transaction/DELETE_ERROR') {
++        return state.deleteIn(['errors', payload.key]);
++    }
++
++    if (action.type === 'transaction/SET') {
++        const key = Array.isArray(payload.key) ? payload.key : [payload.key];
++        return state.setIn(key, fromJS(payload.value))
++    }
++
++    if (action.type === 'transaction/REMOVE') {
++        const key = Array.isArray(payload.key) ? payload.key : [payload.key];
++        return state.removeIn(key)
++    }
++
++    return state;
++}
+diff --git a/src/app/redux/TransactionSaga.js b/src/app/redux/TransactionSaga.js
+index 5d5246b..2f4da03 100644
+--- a/src/app/redux/TransactionSaga.js
++++ b/src/app/redux/TransactionSaga.js
+@@ -3,9 +3,6 @@ import {call, put, select} from 'redux-saga/effects';
+ import {fromJS, Set, Map} from 'immutable'
+ import {getAccount, getContent} from 'app/redux/SagaShared'
+ import {findSigningKey} from 'app/redux/AuthSaga'
+-import g from 'app/redux/GlobalReducer'
+-import user from 'app/redux/User'
+-import tr from 'app/redux/Transaction'
+ import tt from 'counterpart'
+ import getSlug from 'speakingurl'
+ import {DEBT_TICKER} from 'app/client_config'
+@@ -75,14 +72,14 @@ function* preBroadcast_vote({operation, username}) {
+     if (!operation.voter) operation.voter = username
+     const {voter, author, permlink, weight} = operation
+     // give immediate feedback
+-    yield put(g.actions.set({key: `transaction_vote_active_${author}_${permlink}`, value: true}))
+-    yield put(g.actions.voted({username: voter, author, permlink, weight}))
++    yield put({type: 'global/SET', payload: {key: `transaction_vote_active_${author}_${permlink}`, value: true}})
++    yield put({type: 'global/VOTED', payload: {username: voter, author, permlink, weight}})
+     return operation
+ }
+ function* preBroadcast_account_witness_vote({operation, username}) {
+     if (!operation.account) operation.account = username
+     const {account, witness, approve} = operation
+-    yield put(g.actions.updateAccountWitnessVote({account, witness, approve}))
++    yield put({type: 'global/UPDATE_ACCOUNT_WITNESS_VOTE', payload: {account, witness, approve}})
+     return operation
+ }
+ 
+@@ -92,7 +89,7 @@ function* preBroadcast_custom_json({operation}) {
+         try {
+             if(json[0] === 'follow') {
+                 const {follower, following, what: [action]} = json[1]
+-                yield put(g.actions.update({
++                yield put({type: 'global/UPDATE', payload: {
+                     key: ['follow', 'getFollowingAsync', follower],
+                     notSet: Map(),
+                     updater: m => {
+@@ -111,7 +108,7 @@ function* preBroadcast_custom_json({operation}) {
+                         m = m.set('ignore_count', m.get('ignore_result', Set()).size)
+                         return m//.asImmutable()
+                     }
+-                }))
++                }})
+             }
+         } catch(e) {
+             console.error('TransactionSaga unrecognized follow custom_json format', operation.json);
+@@ -121,7 +118,7 @@ function* preBroadcast_custom_json({operation}) {
+ }
+ 
+ function* error_account_witness_vote({operation: {account, witness, approve}}) {
+-    yield put(g.actions.updateAccountWitnessVote({account, witness, approve: !approve}))
++    yield put({type: 'global/UPDATE_ACCOUNT_WITNESS_VOTE', payload: {account, witness, approve: !approve}})
+ }
+ 
+ /** Keys, username, and password are not needed for the initial call.  This will check the login and may trigger an action to prompt for the password / key. */
+@@ -132,7 +129,7 @@ function* broadcastOperation({payload:
+ 
+     const conf = typeof confirm === 'function' ? confirm() : confirm
+     if(conf) {
+-        yield put(tr.actions.confirmOperation({confirm, warning, operation: operationParam, errorCallback}))
++        yield put({type: 'transaction/CONFIRM_OPERATION', payload: {confirm, warning, operation: operationParam, errorCallback}})
+         return
+     }
+     const payload = {operations: [[type, operation]], keys, username, successCallback, errorCallback}
+@@ -141,7 +138,7 @@ function* broadcastOperation({payload:
+         const warning = tt('g.post_key_warning.warning')
+         const checkbox = tt('g.post_key_warning.checkbox')
+         operationParam.allowPostUnsafe = true
+-        yield put(tr.actions.confirmOperation({confirm, warning, checkbox, operation: operationParam, errorCallback}))
++        yield put({type: 'transaction/CONFIRM_OPERATION', payload: {confirm, warning, checkbox, operation: operationParam, errorCallback}})
+         return
+     }
+     try {
+@@ -153,7 +150,7 @@ function* broadcastOperation({payload:
+                 payload.keys.push(signingKey)
+             else {
+                 if (!password) {
+-                    yield put(user.actions.showLogin({operation: {type, operation, username, successCallback, errorCallback, saveLogin: true}}))
++                    yield put({type: 'user/SHOW_LOGIN', payload: {operation: {type, operation, username, successCallback, errorCallback, saveLogin: true}}})
+                     return
+                 }
+             }
+@@ -190,7 +187,7 @@ function* broadcastPayload({payload: {operations, keys, username, successCallbac
+     // console.log('broadcastPayload')
+     if ($STM_Config.read_only_mode) return;
+     for (const [type] of operations) // see also transaction/ERROR
+-        yield put(tr.actions.remove({key: ['TransactionError', type]}))
++        yield put({type: 'transaction/REMOVE', payload: {key: ['TransactionError', type]}})
+ 
+     {
+         const newOps = []
+@@ -268,7 +265,7 @@ function* broadcastPayload({payload: {operations, keys, username, successCallbac
+     } catch (error) {
+         console.error('TransactionSaga\tbroadcastPayload', error);
+         // status: error
+-        yield put(tr.actions.error({operations, error, errorCallback}));
++        yield put({type: 'transaction/ERROR', payload: {operations, error, errorCallback}});
+         for (const [type, operation] of operations) {
+             if (hook['error_' + type]) {
+                 try {
+@@ -286,31 +283,31 @@ function* accepted_comment({operation}) {
+     // update again with new $$ amount from the steemd node
+     yield call(getContent, {author, permlink})
+     // receiveComment did the linking already (but that is commented out)
+-    yield put(g.actions.linkReply(operation))
++    yield put({type: 'global/LINK_REPLY', payload: operation})
+     // mark the time (can only post 1 per min)
+     // yield put(user.actions.acceptedComment())
+ }
+ function* accepted_delete_comment({operation}) {
+-    yield put(g.actions.deleteContent(operation))
++    yield put({type: 'global/DELETE_CONTENT', payload: operation})
+ }
+ 
+ function* accepted_vote({operation: {author, permlink, weight}}) {
+     console.log('Vote accepted, weight', weight, 'on', author + '/' + permlink, 'weight');
+     // update again with new $$ amount from the steemd node
+-    yield put(g.actions.remove({key: `transaction_vote_active_${author}_${permlink}`}))
++    yield put({type: 'global/REMOVE', payload: {key: `transaction_vote_active_${author}_${permlink}`}})
+     yield call(getContent, {author, permlink})
+ }
+ 
+ function* accepted_withdraw_vesting({operation}) {
+     let [account] = yield call([api, api.getAccountsAsync], [operation.account])
+     account = fromJS(account)
+-    yield put(g.actions.receiveAccount({account}))
++    yield put({type: 'global/RECEIVE_ACCOUNT', payload: {account}})
+ }
+ 
+ function* accepted_account_update({operation}) {
+     let [account] = yield call([api, api.getAccountsAsync], [operation.account])
+     account = fromJS(account)
+-    yield put(g.actions.receiveAccount({account}))
++    yield put({type: 'global/RECEIVE_ACCOUNT', payload: {account}})
+ 
+     // bug, fork, etc.. the folowing would be mis-leading
+     // const {account} = operation
+@@ -454,14 +451,14 @@ function createPatch(text1, text2) {
+ function* error_custom_json({operation: {id, required_posting_auths}}) {
+     if(id === 'follow') {
+         const follower = required_posting_auths[0]
+-        yield put(g.actions.update({
++        yield put({type: 'global/UPDATE', payload: {
+             key: ['follow', 'getFollowingAsync', follower, 'loading'],
+             updater: () => null
+-        }))
++        }})
+     }
+ }
+ function* error_vote({operation: {author, permlink}}) {
+-    yield put(g.actions.remove({key: `transaction_vote_active_${author}_${permlink}`}));
++    yield put({type: 'global/REMOVE', payload: {key: `transaction_vote_active_${author}_${permlink}`}});
+     yield call(getContent, {author, permlink}); // unvote
+ }
+ 
+diff --git a/src/app/redux/User.js b/src/app/redux/User.js
+deleted file mode 100644
+index 6e84ee1..0000000
+--- a/src/app/redux/User.js
++++ /dev/null
+@@ -1,155 +0,0 @@
+-import {fromJS} from 'immutable';
+-import createModule from 'redux-modules';
+-import { DEFAULT_LANGUAGE } from 'app/client_config';
+-import store from 'store';
+-
+-const defaultState = fromJS({
+-    current: null,
+-    show_login_modal: false,
+-    show_transfer_modal: false,
+-    show_powerdown_modal: false,
+-    show_promote_post_modal: false,
+-    show_signup_modal: false,
+-    pub_keys_used: null,
+-    locale: DEFAULT_LANGUAGE,
+-});
+-
+-if (process.env.BROWSER) {
+-    const locale = store.get('language');
+-    if (locale) defaultState.locale = locale;
+-}
+-
+-export default createModule({
+-    name: 'user',
+-    initialState: defaultState,
+-    transformations: [
+-        {
+-            action: 'SHOW_LOGIN',
+-            reducer: (state, {payload}) => {
+-                // https://github.com/mboperator/redux-modules/issues/11
+-                if (typeof payload === 'function') payload = undefined;
+-                let operation, loginDefault
+-                if(payload) {
+-                    operation = fromJS(payload.operation)
+-                    loginDefault = fromJS(payload.loginDefault)
+-                }
+-                return state.merge({show_login_modal: true, loginBroadcastOperation: operation, loginDefault})
+-            }
+-        },
+-        {
+-            action: 'SHOW_TERMS',
+-            reducer: (state, {payload}) => {
+-                // https://github.com/mboperator/redux-modules/issues/11
+-                if (typeof payload === 'function') payload = undefined;
+-                let operation, termsDefault;
+-                if(payload) {
+-                    operation = fromJS(payload.operation);
+-                    termsDefault = fromJS(payload.termsDefault)
+-                }
+-                return state.merge({show_terms_modal: true, loginBroadcastOperation: operation, termsDefault})
+-            }
+-        },
+-        { action: 'HIDE_LOGIN', reducer: state =>
+-            state.merge({show_login_modal: false, loginBroadcastOperation: undefined, loginDefault: undefined}) },
+-        { action: 'SAVE_LOGIN_CONFIRM', reducer: (state, {payload}) => state.set('saveLoginConfirm', payload) },
+-        { action: 'SAVE_LOGIN', reducer: (state) => state }, // Use only for low security keys (like posting only keys)
+-        { action: 'REMOVE_HIGH_SECURITY_KEYS', reducer: (state) => {
+-            if(!state.hasIn(['current', 'private_keys'])) return state
+-            let empty = false
+-            state = state.updateIn(['current', 'private_keys'], private_keys => {
+-                if(!private_keys) return null
+-                if(private_keys.has('active_private'))
+-                    console.log('removeHighSecurityKeys')
+-                private_keys = private_keys.delete('active_private')
+-                empty = private_keys.size === 0
+-                return private_keys
+-            })
+-            if(empty) {
+-                // User logged in with Active key then navigates away from the page
+-                // LOGOUT
+-                return defaultState.merge({logged_out: true})
+-            }
+-            const username = state.getIn(['current', 'username'])
+-            state = state.setIn(['authority', username, 'active'], 'none')
+-            state = state.setIn(['authority', username, 'owner'], 'none')
+-            return state
+-        }},
+-        { action: 'CHANGE_LANGUAGE', reducer: (state, {payload}) => {
+-            return state.set('locale', payload)}
+-        },
+-        { action: 'SHOW_TRANSFER', reducer: state => state.set('show_transfer_modal', true) },
+-        { action: 'HIDE_TRANSFER', reducer: state => state.set('show_transfer_modal', false) },
+-        { action: 'SHOW_POWERDOWN', reducer: state => state.set('show_powerdown_modal', true) },
+-        { action: 'HIDE_POWERDOWN', reducer: state => state.set('show_powerdown_modal', false) },
+-        { action: 'SHOW_PROMOTE_POST', reducer: state => state.set('show_promote_post_modal', true) },
+-        { action: 'HIDE_PROMOTE_POST', reducer: state => state.set('show_promote_post_modal', false) },
+-        { action: 'SET_TRANSFER_DEFAULTS', reducer: (state, {payload}) => state.set('transfer_defaults', fromJS(payload)) },
+-        { action: 'CLEAR_TRANSFER_DEFAULTS', reducer: (state) => state.remove('transfer_defaults') },
+-        { action: 'SET_POWERDOWN_DEFAULTS', reducer: (state, {payload}) => state.set('powerdown_defaults', fromJS(payload)) },
+-        { action: 'CLEAR_POWERDOWN_DEFAULTS', reducer: (state) => state.remove('powerdown_defaults') },
+-        {
+-            action: 'USERNAME_PASSWORD_LOGIN',
+-            reducer: state => state, // saga
+-        },
+-        {
+-            action: 'SET_USER',
+-            reducer: (state, {payload}) => {
+-                // console.log('SET_USER')
+-                if (payload.vesting_shares) payload.vesting_shares = parseFloat(payload.vesting_shares);
+-                if (payload.delegated_vesting_shares) payload.delegated_vesting_shares = parseFloat(payload.delegated_vesting_shares);
+-                if (payload.received_vesting_shares) payload.received_vesting_shares = parseFloat(payload.received_vesting_shares);
+-                return state.mergeDeep({ current: payload, show_login_modal: false, loginBroadcastOperation: undefined, loginDefault: undefined, logged_out: undefined })
+-            }
+-        },
+-        {
+-            action: 'CLOSE_LOGIN',
+-            reducer: (state) => state.merge({ login_error: undefined, show_login_modal: false, loginBroadcastOperation: undefined, loginDefault: undefined })
+-        },
+-        {
+-            action: 'LOGIN_ERROR',
+-            reducer: (state, {payload: {error}}) => state.merge({ login_error: error, logged_out: undefined })
+-        },
+-        {
+-            action: 'LOGOUT',
+-            reducer: () => {
+-                return defaultState.merge({logged_out: true})
+-            }
+-        },
+-        // {
+-        //     action: 'ACCEPTED_COMMENT',
+-        //     // User can only post 1 comment per minute
+-        //     reducer: (state) => state.merge({ current: {lastComment: Date.now()} })
+-        // },
+-        { action: 'SHOW_SIGN_UP', reducer: state => state.set('show_signup_modal', true) },
+-        { action: 'HIDE_SIGN_UP', reducer: state => state.set('show_signup_modal', false) },
+-
+-        {
+-            action: 'KEYS_ERROR',
+-            reducer: (state, {payload: {error}}) => state.merge({ keys_error: error })
+-        },
+-        // { action: 'UPDATE_PERMISSIONS', reducer: state => {
+-        //     return state // saga
+-        // }},
+-        { // AuthSaga
+-            action: 'ACCOUNT_AUTH_LOOKUP',
+-            reducer: state => state
+-        },
+-        { // AuthSaga
+-            action: 'SET_AUTHORITY',
+-            reducer: (state, {payload: {accountName, auth, pub_keys_used}}) => {
+-                state = state.setIn(['authority', accountName], fromJS(auth))
+-                if(pub_keys_used)
+-                    state = state.set('pub_keys_used', pub_keys_used)
+-                return state
+-            },
+-        },
+-        { action: 'HIDE_CONNECTION_ERROR_MODAL', reducer: state => state.set('hide_connection_error_modal', true) },
+-        {
+-            action: 'SET',
+-            reducer: (state, {payload: {key, value}}) => {
+-                key = Array.isArray(key) ? key : [key]
+-                return state.setIn(key, fromJS(value))
+-            }
+-        },
+-    ]
+-});
+diff --git a/src/app/redux/UserReducer.js b/src/app/redux/UserReducer.js
+new file mode 100644
+index 0000000..1517578
+--- /dev/null
++++ b/src/app/redux/UserReducer.js
+@@ -0,0 +1,177 @@
++import {fromJS} from 'immutable';
++import { DEFAULT_LANGUAGE } from 'app/client_config';
++import store from 'store';
++
++const defaultState = fromJS({
++    current: null,
++    show_login_modal: false,
++    show_transfer_modal: false,
++    show_promote_post_modal: false,
++    show_signup_modal: false,
++    pub_keys_used: null,
++    locale: DEFAULT_LANGUAGE
++});
++
++if (process.env.BROWSER) {
++    const locale = store.get('language');
++    if (locale) defaultState.locale = locale;
++}
++
++export default function reducer(state = defaultState, action) {
++    const payload = action.payload;
++
++    if (action.type === 'user/SHOW_LOGIN') {
++        let operation, loginDefault;
++        if (payload) {
++            operation = fromJS(payload.operation);
++            loginDefault = fromJS(payload.loginDefault);
++        }
++        return state.merge({show_login_modal: true, loginBroadcastOperation: operation, loginDefault});
++    }
++
++    if (action.type === 'user/SHOW_TERMS') {
++        let operation, termsDefault;
++        if (payload) {
++            operation = fromJS(payload.operation);
++            termsDefault = fromJS(payload.termsDefault);
++        }
++        return state.merge({show_terms_modal: true, loginBroadcastOperation: operation, termsDefault});
++    }
++
++    if (action.type === 'user/HIDE_LOGIN') {
++        return state.merge({show_login_modal: false, loginBroadcastOperation: undefined, loginDefault: undefined});
++    }
++
++    if (action.type === 'user/SAVE_LOGIN_CONFIRM') {
++        return state.set('saveLoginConfirm', payload);
++    }
++
++    if (action.type === 'user/SAVE_LOGIN') {
++        // Use only for low security keys (like posting only keys)
++        return state;
++    }
++
++    if (action.type === 'user/REMOVE_HIGH_SECURITY_KEYS') {
++        if (!state.hasIn(['current', 'private_keys'])) return state;
++        let empty = false;
++        state = state.updateIn(['current', 'private_keys'], private_keys => {
++            if (!private_keys) return null;
++            if (private_keys.has('active_private')) console.log('removeHighSecurityKeys');
++            private_keys = private_keys.delete('active_private');
++            empty = private_keys.size === 0;
++            return private_keys;
++        })
++        if (empty) {
++            // User logged in with Active key then navigates away from the page
++            // LOGOUT
++            return defaultState.merge({logged_out: true});
++        }
++        const username = state.getIn(['current', 'username']);
++        state = state.setIn(['authority', username, 'active'], 'none');
++        state = state.setIn(['authority', username, 'owner'], 'none');
++        return state;
++    }
++
++    if (action.type === 'user/CHANGE_LANGUAGE') {
++        return state.set('locale', payload);
++    }
++
++    if (action.type === 'user/SHOW_TRANSFER') {
++        return state.set('show_transfer_modal', true);
++    }
++
++    if (action.type === 'user/HIDE_TRANSFER') {
++        return state.set('show_transfer_modal', false);
++    }
++
++    if (action.type === 'user/SHOW_POWERDOWN') {
++        return state.set('show_powerdown_modal', true);
++    }
++
++    if (action.type === 'user/HIDE_POWERDOWN') {
++        return state.set('show_powerdown_modal', false);
++    }
++
++    if (action.type === 'user/SHOW_PROMOTE_POST') {
++        return state.set('show_promote_post_modal', true);
++    }
++
++    if (action.type === 'user/HIDE_PROMOTE_POST') {
++        return state.set('show_promote_post_modal', false);
++    }
++
++    if (action.type === 'user/SET_TRANSFER_DEFAULTS') {
++        return state.set('transfer_defaults', fromJS(payload));
++    }
++
++    if (action.type === 'user/CLEAR_TRANSFER_DEFAULTS') {
++        return state.remove('transfer_defaults');
++    }
++
++    if (action.type === 'user/SET_POWERDOWN_DEFAULTS') {
++        return state.set('powerdown_defaults', fromJS(payload));
++    }
++
++    if (action.type === 'user/CLEAR_POWERDOWN_DEFAULTS') {
++        return state.remove('powerdown_defaults');
++    }
++
++    if (action.type === 'user/USERNAME_PASSWORD_LOGIN') {
++        return state; // saga
++    }
++
++    if (action.type === 'user/SET_USER') {
++        if (payload.vesting_shares) payload.vesting_shares = parseFloat(payload.vesting_shares);
++        if (payload.delegated_vesting_shares) payload.delegated_vesting_shares = parseFloat(payload.delegated_vesting_shares);
++        if (payload.received_vesting_shares) payload.received_vesting_shares = parseFloat(payload.received_vesting_shares);
++        return state.mergeDeep({ current: payload, show_login_modal: false, loginBroadcastOperation: undefined, loginDefault: undefined, logged_out: undefined });
++    }
++
++    if (action.type === 'user/CLOSE_LOGIN') {
++        return state.merge({ login_error: undefined, show_login_modal: false, loginBroadcastOperation: undefined, loginDefault: undefined });
++    }
++
++    if (action.type === 'user/LOGIN_ERROR') {
++        return state.merge({ login_error: payload.error, logged_out: undefined });
++    }
++
++    if (action.type === 'user/LOGOUT') {
++        return defaultState.merge({logged_out: true});
++    }
++
++    if (action.type === 'user/SHOW_SIGN_UP') {
++        return state.set('show_signup_modal', true);
++    }
++
++    if (action.type === 'user/HIDE_SIGN_UP') {
++        return state.set('show_signup_modal', false);
++    }
++
++    if (action.type === 'user/KEYS_ERROR') {
++        return state.merge({ keys_error: payload.error })
++    }
++
++    if (action.type === 'user/ACCOUNT_AUTH_LOOKUP') {
++        // AuthSaga
++        return state;
++    }
++
++    if (action.type === 'user/SET_AUTHORITY') {
++        // AuthSaga
++        const {accountName, auth, pub_keys_used} = payload;
++        state = state.setIn(['authority', accountName], fromJS(auth));
++        if (pub_keys_used) state = state.set('pub_keys_used', pub_keys_used);
++        return state;
++    }
++
++    if (action.type === 'user/HIDE_CONNECTION_ERROR_MODAL') {
++        return state.set('hide_connection_error_modal', true);
++    }
++
++    if (action.type === 'user/SET') {
++        const key = Array.isArray(payload.key) ? payload.key : [payload.key];
++        return state.setIn(key, fromJS(payload.value));
++    }
++
++    return state;
++}
+diff --git a/src/app/redux/UserSaga.js b/src/app/redux/UserSaga.js
+index 77bb585..7ac8e26 100644
+--- a/src/app/redux/UserSaga.js
++++ b/src/app/redux/UserSaga.js
+@@ -2,7 +2,6 @@ import {fromJS, Set, List} from 'immutable'
+ import {takeLatest} from 'redux-saga';
+ import {call, put, select, fork} from 'redux-saga/effects';
+ import {accountAuthLookup} from 'app/redux/AuthSaga'
+-import user from 'app/redux/User'
+ import {getAccount} from 'app/redux/SagaShared'
+ import {browserHistory} from 'react-router'
+ import {serverApiLogin, serverApiLogout} from 'app/utils/ServerApiClient';
+@@ -26,7 +25,7 @@ export const userWatches = [
+     uploadImageWatch,
+ ]
+ 
+-const highSecurityPages = Array(/\/market/, /\/@.+\/(transfers|permissions|password)/, /\/~witnesses/)
++const highSecurityPages = [/\/market/, /\/@.+\/(transfers|permissions|password)/, /\/~witnesses/]
+ 
+ function* lookupPreviousOwnerAuthorityWatch() {
+     yield* takeLatest('user/lookupPreviousOwnerAuthority', lookupPreviousOwnerAuthority);
+@@ -65,10 +64,10 @@ function* loadSavingsWithdraw() {
+     const withdraws = List(fromJS(m).values())
+         .sort((a, b) => strCmp(a.get('complete'), b.get('complete')))
+ 
+-    yield put(user.actions.set({
++    yield put({type: 'user/SET', payload: {
+         key: 'savings_withdraws',
+         value: withdraws,
+-    }))
++    }})
+ }
+ 
+ const strCmp = (a, b) => a > b ? 1 : a < b ? -1 : 0
+@@ -84,7 +83,7 @@ function* removeHighSecurityKeys({payload: {pathname}}) {
+     // from getting logged out when they click on Permissions (which is really bad because that tab
+     // disappears again).
+     if(!highSecurityPage)
+-        yield put(user.actions.removeHighSecurityKeys())
++        yield put({type: 'user/REMOVE_HIGH_SECURITY_KEYS'})
+ }
+ 
+ /**
+@@ -147,12 +146,12 @@ function* usernamePasswordLogin2({payload: {username, password, saveLogin,
+ 
+     const account = yield call(getAccount, username)
+     if (!account) {
+-        yield put(user.actions.loginError({ error: 'Username does not exist' }))
++        yield put({type: 'user/LOGIN_ERROR', payload: { error: 'Username does not exist' }})
+         return
+     }
+     //dmca user block
+     if (username && DMCAUserList.includes(username)) {
+-        yield put(user.actions.loginError({ error: translate('terms_violation') }))
++        yield put({type: 'user/LOGIN_ERROR', payload: { error: translate('terms_violation') }})
+         return
+     }
+ 
+@@ -183,29 +182,20 @@ function* usernamePasswordLogin2({payload: {username, password, saveLogin,
+     if(!highSecurityLogin) {
+         const accountName = account.get('name')
+         authority = authority.set('active', 'none')
+-        yield put(user.actions.setAuthority({accountName, auth: authority}))
++        yield put({type: 'user/SET_AUTHORITY', payload: {accountName, auth: authority}})
+     }
+     const fullAuths = authority.reduce((r, auth, type) => (auth === 'full' ? r.add(type) : r), Set())
+     if (!fullAuths.size) {
+         localStorage.removeItem('autopost2')
+         const owner_pub_key = account.getIn(['owner', 'key_auths', 0, 0]);
+-        // const pub_keys = yield select(state => state.user.get('pub_keys_used'))
+-        // serverApiRecordEvent('login_attempt', JSON.stringify({name: username, ...pub_keys, cur_owner: owner_pub_key}))
+-        // FIXME pls parameterize opaque things like this into a constants file
+-        // code like this requires way too much historical knowledge to
+-        // understand.
+-        if (owner_pub_key === 'STM7sw22HqsXbz7D2CmJfmMwt9rimtk518dRzsR1f8Cgw52dQR1pR') {
+-            yield put(user.actions.loginError({ error: 'Hello. Your account may have been compromised. We are working on restoring an access to your account. Please send an email to support@steemit.com.' }))
+-            return
+-        }
+         if(login_owner_pubkey === owner_pub_key || login_wif_owner_pubkey === owner_pub_key) {
+-            yield put(user.actions.loginError({ error: 'owner_login_blocked' }))
++            yield put({type: 'user/LOGIN_ERROR', payload: { error: 'owner_login_blocked' }})
+         } else if(!highSecurityLogin && hasActiveAuth) {
+-            yield put(user.actions.loginError({ error: 'active_login_blocked' }))
++            yield put({type: 'user/LOGIN_ERROR', payload: { error: 'active_login_blocked' }})
+         } else {
+             const generated_type = password[0] === 'P' && password.length > 40;
+             serverApiRecordEvent('login_attempt', JSON.stringify({name: username, login_owner_pubkey, owner_pub_key, generated_type}))
+-            yield put(user.actions.loginError({ error: 'Incorrect Password' }))
++            yield put({type: 'user/LOGIN_ERROR', payload: { error: 'Incorrect Password' }})
+         }
+         return
+     }
+@@ -230,7 +220,7 @@ function* usernamePasswordLogin2({payload: {username, password, saveLogin,
+             posting_pubkey === owner_pubkey ||
+             posting_pubkey === active_pubkey
+         ) {
+-            yield put(user.actions.loginError({ error: 'This login gives owner or active permissions and should not be used here.  Please provide a posting only login.' }))
++            yield put({type: 'user/LOGIN_ERROR', payload: { error: 'This login gives owner or active permissions and should not be used here.  Please provide a posting only login.' }})
+             localStorage.removeItem('autopost2')
+             return
+         }
+@@ -249,17 +239,17 @@ function* usernamePasswordLogin2({payload: {username, password, saveLogin,
+     if(!operationType || saveLogin) {
+         // Keep the posting key in RAM but only when not signing an operation.
+         // No operation or the user has checked: Keep me logged in...
+-        yield put(user.actions.setUser({username, private_keys, login_owner_pubkey, vesting_shares: account.get('vesting_shares'),
++        yield put({type: 'user/SET_USER', payload: {username, private_keys, login_owner_pubkey, vesting_shares: account.get('vesting_shares'),
+          received_vesting_shares: account.get('received_vesting_shares'),
+-         delegated_vesting_shares: account.get('delegated_vesting_shares')}))
++         delegated_vesting_shares: account.get('delegated_vesting_shares')}})
+     } else {
+-        yield put(user.actions.setUser({username, vesting_shares: account.get('vesting_shares'), 
++        yield put({type: 'user/SET_USER', payload: {username, vesting_shares: account.get('vesting_shares'),
+          received_vesting_shares: account.get('received_vesting_shares'),
+-         delegated_vesting_shares: account.get('delegated_vesting_shares')}))
++         delegated_vesting_shares: account.get('delegated_vesting_shares')}})
+     }
+ 
+     if (!autopost && saveLogin)
+-        yield put(user.actions.saveLogin());
++        yield put({type: 'user/SAVE_LOGIN'});
+ 
+     try {
+         // const challengeString = yield serverApiLoginChallenge()
+@@ -334,7 +324,7 @@ function* saveLogin_localStorage() {
+ }
+ 
+ function* logout() {
+-    yield put(user.actions.saveLoginConfirm(false)) // Just incase it is still showing
++    yield put({type: 'user/SAVE_LOGIN_CONFIRM', payload: false}) // Just incase it is still showing
+     if (process.env.BROWSER)
+         localStorage.removeItem('autopost2')
+     serverApiLogout();
+@@ -380,7 +370,7 @@ function* lookupPreviousOwnerAuthority({payload: {}}) {
+         return
+     }
+     // console.log('UserSage ---> previous_owner_authority', previous_owner_authority.toJS())
+-    yield put(user.actions.setUser({previous_owner_authority}))
++    yield put({type: 'user/SET_USER', payload: {previous_owner_authority}})
+ }
+ 
+ function* uploadImageWatch() {
+diff --git a/src/app/redux/tests/global.test.js b/src/app/redux/tests/global.test.js
+index a553976..9550134 100644
+--- a/src/app/redux/tests/global.test.js
++++ b/src/app/redux/tests/global.test.js
+@@ -3,11 +3,9 @@
+ import chai, {expect} from 'chai';
+ import chaiImmutable from 'chai-immutable';
+ import Immutable, {Map} from 'immutable';
+-import ReducerModule from '../GlobalReducer';
++import reducer from '../GlobalReducer';
+ chai.use(chaiImmutable);
+ 
+-const {reducer, actions} = ReducerModule;
+-
+ describe('global reducer', () => {
+     it('should return empty state', () => {
+         expect(
+@@ -19,7 +17,7 @@ describe('global reducer', () => {
+         const state = Immutable.fromJS(require('./global.json'));
+         //const action = {type: 'global/RECEIVE_STATE', payload: state};
+         expect(
+-            reducer(undefined, actions.receiveState(state))
++            reducer(undefined, {type: 'global/RECEIVE_STATE', payload: state})
+         ).to.equal(state);
+     });
+ });
+diff --git a/yarn.lock b/yarn.lock
+index 047b023..02ed30c 100644
+--- a/yarn.lock
++++ b/yarn.lock
+@@ -11,8 +11,8 @@
+     libsodium-wrappers "^0.4.8"
+ 
+ "@types/geojson@^1.0.0":
+-  version "1.0.5"
+-  resolved "https://registry.yarnpkg.com/@types/geojson/-/geojson-1.0.5.tgz#ef9f12277233399c7f32086818a56a84c8952f8f"
++  version "1.0.6"
++  resolved "https://registry.yarnpkg.com/@types/geojson/-/geojson-1.0.6.tgz#3e02972728c69248c2af08d60a48cbb8680fffdf"
+ 
+ abab@^1.0.3:
+   version "1.0.4"
+@@ -56,16 +56,16 @@ acorn@^4.0.3, acorn@^4.0.4:
+   resolved "https://registry.yarnpkg.com/acorn/-/acorn-4.0.13.tgz#105495ae5361d697bd195c825192e1ad7f253787"
+ 
+ acorn@^5.0.0, acorn@^5.1.1:
+-  version "5.1.2"
+-  resolved "https://registry.yarnpkg.com/acorn/-/acorn-5.1.2.tgz#911cb53e036807cf0fa778dc5d370fbd864246d7"
++  version "5.2.1"
++  resolved "https://registry.yarnpkg.com/acorn/-/acorn-5.2.1.tgz#317ac7821826c22c702d66189ab8359675f135d7"
+ 
+ addressparser@~1.0.1:
+   version "1.0.1"
+   resolved "https://registry.yarnpkg.com/addressparser/-/addressparser-1.0.1.tgz#47afbe1a2a9262191db6838e4fd1d39b40821746"
+ 
+ ajv-keywords@^2.0.0, ajv-keywords@^2.1.0:
+-  version "2.1.0"
+-  resolved "https://registry.yarnpkg.com/ajv-keywords/-/ajv-keywords-2.1.0.tgz#a296e17f7bfae7c1ce4f7e0de53d29cb32162df0"
++  version "2.1.1"
++  resolved "https://registry.yarnpkg.com/ajv-keywords/-/ajv-keywords-2.1.1.tgz#617997fc5f60576894c435f940d819e135b80762"
+ 
+ ajv@^4.9.1:
+   version "4.11.8"
+@@ -75,13 +75,13 @@ ajv@^4.9.1:
+     json-stable-stringify "^1.0.1"
+ 
+ ajv@^5.0.0, ajv@^5.1.0, ajv@^5.1.5, ajv@^5.2.0, ajv@^5.2.3:
+-  version "5.2.3"
+-  resolved "https://registry.yarnpkg.com/ajv/-/ajv-5.2.3.tgz#c06f598778c44c6b161abafe3466b81ad1814ed2"
++  version "5.3.0"
++  resolved "https://registry.yarnpkg.com/ajv/-/ajv-5.3.0.tgz#4414ff74a50879c208ee5fdc826e32c303549eda"
+   dependencies:
+     co "^4.6.0"
+     fast-deep-equal "^1.0.0"
++    fast-json-stable-stringify "^2.0.0"
+     json-schema-traverse "^0.3.0"
+-    json-stable-stringify "^1.0.1"
+ 
+ align-text@^0.1.1, align-text@^0.1.3:
+   version "0.1.4"
+@@ -234,8 +234,8 @@ asap@~2.0.3:
+   resolved "https://registry.yarnpkg.com/asap/-/asap-2.0.6.tgz#e50347611d7e690943208bbdafebcbc2fb866d46"
+ 
+ asn1.js@^4.0.0, asn1.js@^4.8.1:
+-  version "4.9.1"
+-  resolved "https://registry.yarnpkg.com/asn1.js/-/asn1.js-4.9.1.tgz#48ba240b45a9280e94748990ba597d216617fd40"
++  version "4.9.2"
++  resolved "https://registry.yarnpkg.com/asn1.js/-/asn1.js-4.9.2.tgz#8117ef4f7ed87cd8f89044b5bff97ac243a16c9a"
+   dependencies:
+     bn.js "^4.0.0"
+     inherits "^2.0.1"
+@@ -1312,8 +1312,8 @@ brorand@^1.0.1:
+   resolved "https://registry.yarnpkg.com/brorand/-/brorand-1.1.0.tgz#12c25efe40a45e3c323eb8675a0a0ce57b22371f"
+ 
+ browserify-aes@^1.0.0, browserify-aes@^1.0.4, browserify-aes@^1.0.6:
+-  version "1.1.0"
+-  resolved "https://registry.yarnpkg.com/browserify-aes/-/browserify-aes-1.1.0.tgz#1d2ad62a8b479f23f0ab631c1be86a82dbccbe48"
++  version "1.1.1"
++  resolved "https://registry.yarnpkg.com/browserify-aes/-/browserify-aes-1.1.1.tgz#38b7ab55edb806ff2dcda1a7f1620773a477c49f"
+   dependencies:
+     buffer-xor "^1.0.3"
+     cipher-base "^1.0.0"
+@@ -1445,13 +1445,6 @@ callsites@^0.2.0:
+   version "0.2.0"
+   resolved "https://registry.yarnpkg.com/callsites/-/callsites-0.2.0.tgz#afab96262910a7f33c19a5775825c69f34e350ca"
+ 
+-camel-case@^1.2.2:
+-  version "1.2.2"
+-  resolved "https://registry.yarnpkg.com/camel-case/-/camel-case-1.2.2.tgz#1aca7c4d195359a2ce9955793433c6e5542511f2"
+-  dependencies:
+-    sentence-case "^1.1.1"
+-    upper-case "^1.1.1"
+-
+ camelcase-keys@^2.0.0:
+   version "2.1.0"
+   resolved "https://registry.yarnpkg.com/camelcase-keys/-/camelcase-keys-2.1.0.tgz#308beeaffdf28119051efa1d932213c91b8f92e7"
+@@ -1475,7 +1468,7 @@ camelcase@^4.1.0:
+   version "4.1.0"
+   resolved "https://registry.yarnpkg.com/camelcase/-/camelcase-4.1.0.tgz#d545635be1e33c542649c69173e5de6acfae34dd"
+ 
+-camelize@1.0.0, camelize@^1.0.0:
++camelize@1.0.0:
+   version "1.0.0"
+   resolved "https://registry.yarnpkg.com/camelize/-/camelize-1.0.0.tgz#164a5483e630fa4321e5af07020e531831b2609b"
+ 
+@@ -1489,8 +1482,8 @@ caniuse-api@^1.5.2:
+     lodash.uniq "^4.5.0"
+ 
+ caniuse-db@^1.0.30000529, caniuse-db@^1.0.30000634, caniuse-db@^1.0.30000639:
+-  version "1.0.30000746"
+-  resolved "https://registry.yarnpkg.com/caniuse-db/-/caniuse-db-1.0.30000746.tgz#501098c66f5fbbf634c02f25508b05e8809910f4"
++  version "1.0.30000758"
++  resolved "https://registry.yarnpkg.com/caniuse-db/-/caniuse-db-1.0.30000758.tgz#a235627b1922e878b63164942c991b84de92c810"
+ 
+ caseless@~0.11.0:
+   version "0.11.0"
+@@ -1529,9 +1522,9 @@ chalk@^1.0.0, chalk@^1.1.1, chalk@^1.1.3:
+     strip-ansi "^3.0.0"
+     supports-color "^2.0.0"
+ 
+-chalk@^2.0.0, chalk@^2.1.0:
+-  version "2.1.0"
+-  resolved "https://registry.yarnpkg.com/chalk/-/chalk-2.1.0.tgz#ac5becf14fa21b99c6c92ca7a7d7cfd5b17e743e"
++chalk@^2.0.0, chalk@^2.1.0, chalk@^2.3.0:
++  version "2.3.0"
++  resolved "https://registry.yarnpkg.com/chalk/-/chalk-2.3.0.tgz#b5ea48efc9c1793dccc9b4767c93914d3f2d52ba"
+   dependencies:
+     ansi-styles "^3.1.0"
+     escape-string-regexp "^1.0.5"
+@@ -1663,7 +1656,16 @@ cluster@^0.7.7:
+     log ">= 1.2.0"
+     mkdirp ">= 0.0.1"
+ 
+-co-body@*, co-body@^4.2.0:
++co-body@*:
++  version "5.1.1"
++  resolved "https://registry.yarnpkg.com/co-body/-/co-body-5.1.1.tgz#d97781d1e3344ba4a820fd1806bddf8341505236"
++  dependencies:
++    inflation "^2.0.0"
++    qs "^6.4.0"
++    raw-body "^2.2.0"
++    type-is "^1.6.14"
++
++co-body@^4.2.0:
+   version "4.2.0"
+   resolved "https://registry.yarnpkg.com/co-body/-/co-body-4.2.0.tgz#74df20fa73262125dc45482af04e342ea8db3515"
+   dependencies:
+@@ -1773,10 +1775,10 @@ composition@^2.1.1:
+     co "^4.0.2"
+ 
+ compressible@2, compressible@~2.0.6:
+-  version "2.0.11"
+-  resolved "https://registry.yarnpkg.com/compressible/-/compressible-2.0.11.tgz#16718a75de283ed8e604041625a2064586797d8a"
++  version "2.0.12"
++  resolved "https://registry.yarnpkg.com/compressible/-/compressible-2.0.12.tgz#c59a5c99db76767e9876500e271ef63b3493bd66"
+   dependencies:
+-    mime-db ">= 1.29.0 < 2"
++    mime-db ">= 1.30.0 < 2"
+ 
+ concat-map@0.0.1:
+   version "0.0.1"
+@@ -1798,21 +1800,12 @@ config-chain@~1.1.5:
+     proto-list "~1.2.1"
+ 
+ config@^1.25.1:
+-  version "1.26.2"
+-  resolved "https://registry.yarnpkg.com/config/-/config-1.26.2.tgz#2466291168d8afae0aae8ab99ea4d4272f520cae"
++  version "1.27.0"
++  resolved "https://registry.yarnpkg.com/config/-/config-1.27.0.tgz#3ab30d0080ff76f407c2f47ac1326adfd908af5f"
+   dependencies:
+     json5 "0.4.0"
+     os-homedir "1.0.2"
+ 
+-connect@3.6.5:
+-  version "3.6.5"
+-  resolved "https://registry.yarnpkg.com/connect/-/connect-3.6.5.tgz#fb8dde7ba0763877d0ec9df9dac0b4b40e72c7da"
+-  dependencies:
+-    debug "2.6.9"
+-    finalhandler "1.0.6"
+-    parseurl "~1.3.2"
+-    utils-merge "1.0.1"
+-
+ console-browserify@^1.1.0:
+   version "1.1.0"
+   resolved "https://registry.yarnpkg.com/console-browserify/-/console-browserify-1.1.0.tgz#f0241c45730a9fc6323b206dbf38edc741d0bb10"
+@@ -1842,8 +1835,8 @@ content-security-policy-builder@1.1.0:
+     dashify "^0.2.0"
+ 
+ content-type-parser@^1.0.1:
+-  version "1.0.1"
+-  resolved "https://registry.yarnpkg.com/content-type-parser/-/content-type-parser-1.0.1.tgz#c3e56988c53c65127fb46d4032a3a900246fdc94"
++  version "1.0.2"
++  resolved "https://registry.yarnpkg.com/content-type-parser/-/content-type-parser-1.0.2.tgz#caabe80623e63638b2502fd4c7f12ff4ce2352e7"
+ 
+ content-type@^1.0.0, content-type@~1.0.4:
+   version "1.0.4"
+@@ -1931,7 +1924,7 @@ create-hmac@^1.1.0, create-hmac@^1.1.2, create-hmac@^1.1.4:
+     safe-buffer "^5.0.1"
+     sha.js "^2.4.8"
+ 
+-create-react-class@^15.5.1, create-react-class@^15.5.2:
++create-react-class@^15.5.1, create-react-class@^15.5.2, create-react-class@^15.6.0:
+   version "15.6.2"
+   resolved "https://registry.yarnpkg.com/create-react-class/-/create-react-class-15.6.2.tgz#cf1ed15f12aad7f14ef5f2dfe05e6c42f91ef02a"
+   dependencies:
+@@ -1940,8 +1933,8 @@ create-react-class@^15.5.1, create-react-class@^15.5.2:
+     object-assign "^4.1.1"
+ 
+ cross-env@^5.0.0:
+-  version "5.0.5"
+-  resolved "https://registry.yarnpkg.com/cross-env/-/cross-env-5.0.5.tgz#4383d364d9660873dd185b398af3bfef5efffef3"
++  version "5.1.1"
++  resolved "https://registry.yarnpkg.com/cross-env/-/cross-env-5.1.1.tgz#b6d8ab97f304c0f71dae7277b75fe424c08dfa74"
+   dependencies:
+     cross-spawn "^5.1.0"
+     is-windows "^1.0.0"
+@@ -1974,8 +1967,8 @@ cryptiles@3.x.x:
+     boom "5.x.x"
+ 
+ crypto-browserify@^3.11.0:
+-  version "3.11.1"
+-  resolved "https://registry.yarnpkg.com/crypto-browserify/-/crypto-browserify-3.11.1.tgz#948945efc6757a400d6e5e5af47194d10064279f"
++  version "3.12.0"
++  resolved "https://registry.yarnpkg.com/crypto-browserify/-/crypto-browserify-3.12.0.tgz#396cf9f3137f03e4b8e532c58f698254e00f80ec"
+   dependencies:
+     browserify-cipher "^1.0.0"
+     browserify-sign "^4.0.0"
+@@ -1987,6 +1980,7 @@ crypto-browserify@^3.11.0:
+     pbkdf2 "^3.0.3"
+     public-encrypt "^4.0.0"
+     randombytes "^2.0.0"
++    randomfill "^1.0.3"
+ 
+ csrf@^3.0.0:
+   version "3.0.6"
+@@ -2148,7 +2142,13 @@ dateformat@^2.0.0:
+   version "2.2.0"
+   resolved "https://registry.yarnpkg.com/dateformat/-/dateformat-2.2.0.tgz#4065e2013cf9fb916ddfd82efb506ad4c6769062"
+ 
+-debug@*, debug@2, debug@2.6.9, debug@^2.2.0, debug@^2.6.8:
++debug@*, debug@^3.0.1:
++  version "3.1.0"
++  resolved "https://registry.yarnpkg.com/debug/-/debug-3.1.0.tgz#5bb5a0672628b64149566ba16819e61518c67261"
++  dependencies:
++    ms "2.0.0"
++
++debug@2, debug@2.6.9, debug@^2.2.0, debug@^2.6.8, debug@^2.6.9:
+   version "2.6.9"
+   resolved "https://registry.yarnpkg.com/debug/-/debug-2.6.9.tgz#5d128515df134ff327e90a4c93f4e077a536341f"
+   dependencies:
+@@ -2160,12 +2160,6 @@ debug@2.2.0:
+   dependencies:
+     ms "0.7.1"
+ 
+-debug@^3.0.1:
+-  version "3.1.0"
+-  resolved "https://registry.yarnpkg.com/debug/-/debug-3.1.0.tgz#5bb5a0672628b64149566ba16819e61518c67261"
+-  dependencies:
+-    ms "2.0.0"
+-
+ decamelize@^1.0.0, decamelize@^1.1.1, decamelize@^1.1.2:
+   version "1.2.0"
+   resolved "https://registry.yarnpkg.com/decamelize/-/decamelize-1.2.0.tgz#f6534d15148269b20352e7bee26f501f9a191290"
+@@ -2264,6 +2258,10 @@ detect-indent@^4.0.0:
+   dependencies:
+     repeating "^2.0.0"
+ 
++detect-libc@^1.0.2:
++  version "1.0.2"
++  resolved "https://registry.yarnpkg.com/detect-libc/-/detect-libc-1.0.2.tgz#71ad5d204bf17a6a6ca8f450c61454066ef461e1"
++
+ detect-node@^2.0.3:
+   version "2.0.3"
+   resolved "https://registry.yarnpkg.com/detect-node/-/detect-node-2.0.3.tgz#a2033c09cc8e158d37748fbde7507832bd6ce127"
+@@ -2318,7 +2316,7 @@ dom-helpers@^2.3.0, dom-helpers@^2.4.0:
+   version "2.4.0"
+   resolved "https://registry.yarnpkg.com/dom-helpers/-/dom-helpers-2.4.0.tgz#9bb4b245f637367b1fa670274272aa28fe06c367"
+ 
+-dom-helpers@^3.0.0, dom-helpers@^3.2.1:
++dom-helpers@^3.2.1:
+   version "3.2.1"
+   resolved "https://registry.yarnpkg.com/dom-helpers/-/dom-helpers-3.2.1.tgz#3203e07fed217bd1f424b019735582fc37b2825a"
+ 
+@@ -2464,8 +2462,8 @@ ejs@^2.5.6:
+   resolved "https://registry.yarnpkg.com/ejs/-/ejs-2.5.7.tgz#cc872c168880ae3c7189762fd5ffc00896c9518a"
+ 
+ electron-to-chromium@^1.2.7:
+-  version "1.3.26"
+-  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.3.26.tgz#996427294861a74d9c7c82b9260ea301e8c02d66"
++  version "1.3.27"
++  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.3.27.tgz#78ecb8a399066187bb374eede35d9c70565a803d"
+ 
+ elliptic@^6.0.0:
+   version "6.4.0"
+@@ -2565,20 +2563,20 @@ es-to-primitive@^1.1.1:
+     is-date-object "^1.0.1"
+     is-symbol "^1.0.1"
+ 
+-es5-ext@^0.10.12, es5-ext@^0.10.14, es5-ext@^0.10.30, es5-ext@^0.10.9, es5-ext@~0.10.14, es5-ext@~0.10.2:
+-  version "0.10.31"
+-  resolved "https://registry.yarnpkg.com/es5-ext/-/es5-ext-0.10.31.tgz#7bb938c95a7f1b9f728092dc09c41edcc398eefe"
++es5-ext@^0.10.12, es5-ext@^0.10.14, es5-ext@^0.10.30, es5-ext@^0.10.35, es5-ext@^0.10.9, es5-ext@~0.10.14, es5-ext@~0.10.2:
++  version "0.10.35"
++  resolved "https://registry.yarnpkg.com/es5-ext/-/es5-ext-0.10.35.tgz#18ee858ce6a3c45c7d79e91c15fcca9ec568494f"
+   dependencies:
+     es6-iterator "~2.0.1"
+     es6-symbol "~3.1.1"
+ 
+ es6-iterator@2, es6-iterator@^2.0.1, es6-iterator@~2.0.1:
+-  version "2.0.1"
+-  resolved "https://registry.yarnpkg.com/es6-iterator/-/es6-iterator-2.0.1.tgz#8e319c9f0453bf575d374940a655920e59ca5512"
++  version "2.0.3"
++  resolved "https://registry.yarnpkg.com/es6-iterator/-/es6-iterator-2.0.3.tgz#a7de889141a05a94b0854403b2d0a0fbfa98f3b7"
+   dependencies:
+     d "1"
+-    es5-ext "^0.10.14"
+-    es6-symbol "^3.1"
++    es5-ext "^0.10.35"
++    es6-symbol "^3.1.1"
+ 
+ es6-map@^0.1.3:
+   version "0.1.5"
+@@ -2601,7 +2599,7 @@ es6-set@~0.1.5:
+     es6-symbol "3.1.1"
+     event-emitter "~0.3.5"
+ 
+-es6-symbol@3.1.1, es6-symbol@^3.1, es6-symbol@^3.1.1, es6-symbol@~3.1.1:
++es6-symbol@3.1.1, es6-symbol@^3.1.1, es6-symbol@~3.1.1:
+   version "3.1.1"
+   resolved "https://registry.yarnpkg.com/es6-symbol/-/es6-symbol-3.1.1.tgz#bf00ef4fdab6ba1b46ecb7b629b4c7ed5715cc77"
+   dependencies:
+@@ -2680,8 +2678,8 @@ eslint-plugin-babel@^4.1.2:
+   resolved "https://registry.yarnpkg.com/eslint-plugin-babel/-/eslint-plugin-babel-4.1.2.tgz#79202a0e35757dd92780919b2336f1fa2fe53c1e"
+ 
+ eslint-plugin-import@^2.7.0:
+-  version "2.7.0"
+-  resolved "https://registry.yarnpkg.com/eslint-plugin-import/-/eslint-plugin-import-2.7.0.tgz#21de33380b9efb55f5ef6d2e210ec0e07e7fa69f"
++  version "2.8.0"
++  resolved "https://registry.yarnpkg.com/eslint-plugin-import/-/eslint-plugin-import-2.8.0.tgz#fa1b6ef31fcb3c501c09859c1b86f1fc5b986894"
+   dependencies:
+     builtin-modules "^1.1.1"
+     contains-path "^0.1.0"
+@@ -2727,8 +2725,8 @@ eslint-scope@^3.7.1:
+     estraverse "^4.1.1"
+ 
+ eslint@^4.7.0:
+-  version "4.8.0"
+-  resolved "https://registry.yarnpkg.com/eslint/-/eslint-4.8.0.tgz#229ef0e354e0e61d837c7a80fdfba825e199815e"
++  version "4.10.0"
++  resolved "https://registry.yarnpkg.com/eslint/-/eslint-4.10.0.tgz#f25d0d7955c81968c2309aa5c9a229e045176bb7"
+   dependencies:
+     ajv "^5.2.0"
+     babel-code-frame "^6.22.0"
+@@ -2950,8 +2948,8 @@ extglob@^0.3.1:
+     is-extglob "^1.0.0"
+ 
+ extract-text-webpack-plugin@^3.0.0:
+-  version "3.0.1"
+-  resolved "https://registry.yarnpkg.com/extract-text-webpack-plugin/-/extract-text-webpack-plugin-3.0.1.tgz#605a8893faca1dd49bb0d2ca87493f33fd43d102"
++  version "3.0.2"
++  resolved "https://registry.yarnpkg.com/extract-text-webpack-plugin/-/extract-text-webpack-plugin-3.0.2.tgz#5f043eaa02f9750a9258b78c0a6e0dc1408fb2f7"
+   dependencies:
+     async "^2.4.1"
+     loader-utils "^1.1.0"
+@@ -2973,6 +2971,10 @@ fast-deep-equal@^1.0.0:
+   version "1.0.0"
+   resolved "https://registry.yarnpkg.com/fast-deep-equal/-/fast-deep-equal-1.0.0.tgz#96256a3bc975595eb36d82e9929d060d893439ff"
+ 
++fast-json-stable-stringify@^2.0.0:
++  version "2.0.0"
++  resolved "https://registry.yarnpkg.com/fast-json-stable-stringify/-/fast-json-stable-stringify-2.0.0.tgz#d5142c0caee6b1189f87d3a76111064f86c8bbf2"
++
+ fast-levenshtein@~2.0.4:
+   version "2.0.6"
+   resolved "https://registry.yarnpkg.com/fast-levenshtein/-/fast-levenshtein-2.0.6.tgz#3d8a5c66883a16a30ca8643e851f19baa7797917"
+@@ -3029,8 +3031,8 @@ filename-regex@^2.0.0:
+   resolved "https://registry.yarnpkg.com/filename-regex/-/filename-regex-2.0.1.tgz#c1c4b9bee3e09725ddb106b75c1e301fe2f18b26"
+ 
+ filesize@^3.5.9:
+-  version "3.5.10"
+-  resolved "https://registry.yarnpkg.com/filesize/-/filesize-3.5.10.tgz#fc8fa23ddb4ef9e5e0ab6e1e64f679a24a56761f"
++  version "3.5.11"
++  resolved "https://registry.yarnpkg.com/filesize/-/filesize-3.5.11.tgz#1919326749433bb3cf77368bd158caabcc19e9ee"
+ 
+ fill-range@^2.1.0:
+   version "2.2.3"
+@@ -3042,18 +3044,6 @@ fill-range@^2.1.0:
+     repeat-element "^1.1.2"
+     repeat-string "^1.5.2"
+ 
+-finalhandler@1.0.6:
+-  version "1.0.6"
+-  resolved "https://registry.yarnpkg.com/finalhandler/-/finalhandler-1.0.6.tgz#007aea33d1a4d3e42017f624848ad58d212f814f"
+-  dependencies:
+-    debug "2.6.9"
+-    encodeurl "~1.0.1"
+-    escape-html "~1.0.3"
+-    on-finished "~2.3.0"
+-    parseurl "~1.3.2"
+-    statuses "~1.3.1"
+-    unpipe "~1.0.0"
+-
+ finalhandler@1.1.0:
+   version "1.1.0"
+   resolved "https://registry.yarnpkg.com/finalhandler/-/finalhandler-1.1.0.tgz#ce0b6855b45853e791b2fcc680046d88253dd7f5"
+@@ -3140,12 +3130,6 @@ flatten@^1.0.2:
+   version "1.0.2"
+   resolved "https://registry.yarnpkg.com/flatten/-/flatten-1.0.2.tgz#dae46a9d78fbe25292258cc1e780a41d95c03782"
+ 
+-flux-standard-action@^0.6.0:
+-  version "0.6.1"
+-  resolved "https://registry.yarnpkg.com/flux-standard-action/-/flux-standard-action-0.6.1.tgz#6f34211b94834ea1c3cc30f4e7afad3d0fbf71a2"
+-  dependencies:
+-    lodash.isplainobject "^3.2.0"
+-
+ for-in@^0.1.3:
+   version "0.1.8"
+   resolved "https://registry.yarnpkg.com/for-in/-/for-in-0.1.8.tgz#d8773908e31256109952b1fdb9b3fa867d2775e1"
+@@ -3220,7 +3204,14 @@ forwarded@~0.1.2:
+   version "0.1.2"
+   resolved "https://registry.yarnpkg.com/forwarded/-/forwarded-0.1.2.tgz#98c23dab1175657b8c0573e8ceccd91b0ff18c84"
+ 
+-foundation-sites@^6.2.3, "foundation-sites@git+https://github.com/steemit/foundation-sites.git#e8e32c715bbc4c822b80b555345f61337269ca78":
++foundation-sites@^6.2.3:
++  version "6.4.3"
++  resolved "https://registry.yarnpkg.com/foundation-sites/-/foundation-sites-6.4.3.tgz#ea89eb599badf6f03dd526c51f00bdb942a844f6"
++  dependencies:
++    jquery ">=3.0.0"
++    what-input "^4.1.3"
++
++"foundation-sites@git+https://github.com/steemit/foundation-sites.git#e8e32c715bbc4c822b80b555345f61337269ca78":
+   version "6.3.1"
+   resolved "git+https://github.com/steemit/foundation-sites.git#e8e32c715bbc4c822b80b555345f61337269ca78"
+   dependencies:
+@@ -3595,8 +3586,8 @@ gzip-size@^3.0.0:
+     duplexer "^0.1.1"
+ 
+ handlebars@~4.0.0:
+-  version "4.0.10"
+-  resolved "https://registry.yarnpkg.com/handlebars/-/handlebars-4.0.10.tgz#3d30c718b09a3d96f23ea4cc1f403c4d3ba9ff4f"
++  version "4.0.11"
++  resolved "https://registry.yarnpkg.com/handlebars/-/handlebars-4.0.11.tgz#630a35dfe0294bc281edae6ffc5d329fc7982dcc"
+   dependencies:
+     async "^1.4.0"
+     optimist "^0.6.1"
+@@ -3712,9 +3703,9 @@ hawk@~6.0.2:
+     hoek "4.x.x"
+     sntp "2.x.x"
+ 
+-helmet-csp@2.5.1:
+-  version "2.5.1"
+-  resolved "https://registry.yarnpkg.com/helmet-csp/-/helmet-csp-2.5.1.tgz#5f3deec8f922fa7e074dbc3987c168a50573c36d"
++helmet-csp@2.6.0:
++  version "2.6.0"
++  resolved "https://registry.yarnpkg.com/helmet-csp/-/helmet-csp-2.6.0.tgz#c1f5595afbc5f83e5f1e6c15f842f07a10f6ea04"
+   dependencies:
+     camelize "1.0.0"
+     content-security-policy-builder "1.1.0"
+@@ -3723,15 +3714,14 @@ helmet-csp@2.5.1:
+     platform "1.3.4"
+ 
+ helmet@^3.6.1:
+-  version "3.8.2"
+-  resolved "https://registry.yarnpkg.com/helmet/-/helmet-3.8.2.tgz#64f988b8e9d8773ad201da455b8b6a754c229aaa"
++  version "3.9.0"
++  resolved "https://registry.yarnpkg.com/helmet/-/helmet-3.9.0.tgz#7b2cf015a2d109bca83ede7924420799c0e67dee"
+   dependencies:
+-    connect "3.6.5"
+     dns-prefetch-control "0.1.0"
+     dont-sniff-mimetype "1.0.0"
+     expect-ct "0.1.0"
+     frameguard "3.0.0"
+-    helmet-csp "2.5.1"
++    helmet-csp "2.6.0"
+     hide-powered-by "1.0.0"
+     hpkp "2.0.0"
+     hsts "2.1.0"
+@@ -3811,8 +3801,8 @@ html-comment-regex@^1.1.0:
+   resolved "https://registry.yarnpkg.com/html-comment-regex/-/html-comment-regex-1.1.1.tgz#668b93776eaae55ebde8f3ad464b307a4963625e"
+ 
+ html-encoding-sniffer@^1.0.1:
+-  version "1.0.1"
+-  resolved "https://registry.yarnpkg.com/html-encoding-sniffer/-/html-encoding-sniffer-1.0.1.tgz#79bf7a785ea495fe66165e734153f363ff5437da"
++  version "1.0.2"
++  resolved "https://registry.yarnpkg.com/html-encoding-sniffer/-/html-encoding-sniffer-1.0.2.tgz#e70d84b94da53aa375e11fe3a351be6642ca46f8"
+   dependencies:
+     whatwg-encoding "^1.0.1"
+ 
+@@ -3897,11 +3887,11 @@ humanize-number@0.0.2:
+   version "0.0.2"
+   resolved "https://registry.yarnpkg.com/humanize-number/-/humanize-number-0.0.2.tgz#11c0af6a471643633588588048f1799541489c18"
+ 
+-iconv-lite@0.4.13, iconv-lite@~0.4.13:
++iconv-lite@0.4.13:
+   version "0.4.13"
+   resolved "https://registry.yarnpkg.com/iconv-lite/-/iconv-lite-0.4.13.tgz#1f88aba4ab0b1508e8312acc39345f36e992e2f2"
+ 
+-iconv-lite@0.4.19, iconv-lite@^0.4.17:
++iconv-lite@0.4.19, iconv-lite@^0.4.17, iconv-lite@~0.4.13:
+   version "0.4.19"
+   resolved "https://registry.yarnpkg.com/iconv-lite/-/iconv-lite-0.4.19.tgz#f7468f60135f5e5dad3399c0a81be9a1603a082b"
+ 
+@@ -3928,10 +3918,10 @@ ienoopen@1.0.0:
+   resolved "https://registry.yarnpkg.com/ienoopen/-/ienoopen-1.0.0.tgz#346a428f474aac8f50cf3784ea2d0f16f62bda6b"
+ 
+ ignore@^3.3.3:
+-  version "3.3.5"
+-  resolved "https://registry.yarnpkg.com/ignore/-/ignore-3.3.5.tgz#c4e715455f6073a8d7e5dae72d2fc9d71663dba6"
++  version "3.3.7"
++  resolved "https://registry.yarnpkg.com/ignore/-/ignore-3.3.7.tgz#612289bfb3c220e186a58118618d5be8c1bab021"
+ 
+-immutable@^3.7.4, immutable@^3.7.6, immutable@^3.8.1:
++immutable@^3.7.4, immutable@^3.8.1:
+   version "3.8.2"
+   resolved "https://registry.yarnpkg.com/immutable/-/immutable-3.8.2.tgz#c2439951455bb39913daf281376f1530e104adf3"
+ 
+@@ -3964,7 +3954,7 @@ indexof@0.0.1:
+   version "0.0.1"
+   resolved "https://registry.yarnpkg.com/indexof/-/indexof-0.0.1.tgz#82dc336d232b9062179d05ab3293a66059fd435d"
+ 
+-inflation@~2.0.0:
++inflation@^2.0.0, inflation@~2.0.0:
+   version "2.0.0"
+   resolved "https://registry.yarnpkg.com/inflation/-/inflation-2.0.0.tgz#8b417e47c28f925a45133d914ca1fd389107f30f"
+ 
+@@ -3983,14 +3973,14 @@ inherits@1:
+   version "1.0.2"
+   resolved "https://registry.yarnpkg.com/inherits/-/inherits-1.0.2.tgz#ca4309dadee6b54cc0b8d247e8d7c7a0975bdc9b"
+ 
+-inherits@2, inherits@2.0.1, inherits@^2.0.1:
+-  version "2.0.1"
+-  resolved "https://registry.yarnpkg.com/inherits/-/inherits-2.0.1.tgz#b17d08d326b4423e568eff719f91b0b1cbdf69f1"
+-
+-inherits@2.0.3, inherits@^2.0.3, inherits@~2.0.0, inherits@~2.0.1, inherits@~2.0.3:
++inherits@2, inherits@2.0.3, inherits@^2.0.1, inherits@^2.0.3, inherits@~2.0.0, inherits@~2.0.1, inherits@~2.0.3:
+   version "2.0.3"
+   resolved "https://registry.yarnpkg.com/inherits/-/inherits-2.0.3.tgz#633c2c83e3da42a502f52466022480f4208261de"
+ 
++inherits@2.0.1:
++  version "2.0.1"
++  resolved "https://registry.yarnpkg.com/inherits/-/inherits-2.0.1.tgz#b17d08d326b4423e568eff719f91b0b1cbdf69f1"
++
+ ini@^1.3.4, ini@~1.3.0:
+   version "1.3.4"
+   resolved "https://registry.yarnpkg.com/ini/-/ini-1.3.4.tgz#0537cb79daf59b59a1a517dff706c86ec039162e"
+@@ -4026,19 +4016,15 @@ intl-format-cache@^2.0.5:
+   version "2.0.5"
+   resolved "https://registry.yarnpkg.com/intl-format-cache/-/intl-format-cache-2.0.5.tgz#b484cefcb9353f374f25de389a3ceea1af18d7c9"
+ 
+-intl-messageformat-parser@1.2.0:
+-  version "1.2.0"
+-  resolved "https://registry.yarnpkg.com/intl-messageformat-parser/-/intl-messageformat-parser-1.2.0.tgz#5906b7f953ab7470e0dc8549097b648b991892ff"
+-
+-intl-messageformat-parser@^1.2.0:
+-  version "1.3.0"
+-  resolved "https://registry.yarnpkg.com/intl-messageformat-parser/-/intl-messageformat-parser-1.3.0.tgz#c5d26ffb894c7d9c2b9fa444c67f417ab2594268"
++intl-messageformat-parser@1.4.0, intl-messageformat-parser@^1.2.0:
++  version "1.4.0"
++  resolved "https://registry.yarnpkg.com/intl-messageformat-parser/-/intl-messageformat-parser-1.4.0.tgz#b43d45a97468cadbe44331d74bb1e8dea44fc075"
+ 
+ intl-messageformat@^2.0.0, intl-messageformat@^2.1.0:
+-  version "2.1.0"
+-  resolved "https://registry.yarnpkg.com/intl-messageformat/-/intl-messageformat-2.1.0.tgz#1c51da76f02a3f7b360654cdc51bbc4d3fa6c72c"
++  version "2.2.0"
++  resolved "https://registry.yarnpkg.com/intl-messageformat/-/intl-messageformat-2.2.0.tgz#345bcd46de630b7683330c2e52177ff5eab484fc"
+   dependencies:
+-    intl-messageformat-parser "1.2.0"
++    intl-messageformat-parser "1.4.0"
+ 
+ intl-relativeformat@^2.0.0:
+   version "2.1.0"
+@@ -4086,8 +4072,8 @@ is-binary-path@^1.0.0:
+     binary-extensions "^1.0.0"
+ 
+ is-buffer@^1.0.2, is-buffer@^1.1.5:
+-  version "1.1.5"
+-  resolved "https://registry.yarnpkg.com/is-buffer/-/is-buffer-1.1.5.tgz#1f3b26ef613b214b88cbca23cc6c01d87961eecc"
++  version "1.1.6"
++  resolved "https://registry.yarnpkg.com/is-buffer/-/is-buffer-1.1.6.tgz#efaa2ea9daa0d7ab2ea13a97b2b8ad51fefbe8be"
+ 
+ is-builtin-module@^1.0.0:
+   version "1.0.0"
+@@ -4362,8 +4348,8 @@ jsbn@~0.1.0:
+   resolved "https://registry.yarnpkg.com/jsbn/-/jsbn-0.1.1.tgz#a5e654c2e5a2deb5f201d96cefbca80c0ef2f513"
+ 
+ jschardet@^1.4.2:
+-  version "1.5.1"
+-  resolved "https://registry.yarnpkg.com/jschardet/-/jschardet-1.5.1.tgz#c519f629f86b3a5bedba58a88d311309eec097f9"
++  version "1.6.0"
++  resolved "https://registry.yarnpkg.com/jschardet/-/jschardet-1.6.0.tgz#c7d1a71edcff2839db2f9ec30fc5d5ebd3c1a678"
+ 
+ jsdom@^9.8.0:
+   version "9.12.0"
+@@ -4785,10 +4771,6 @@ lodash._basecopy@^3.0.0:
+   version "3.0.1"
+   resolved "https://registry.yarnpkg.com/lodash._basecopy/-/lodash._basecopy-3.0.1.tgz#8da0e6a876cf344c0ad8a54882111dd3c5c7ca36"
+ 
+-lodash._basefor@^3.0.0:
+-  version "3.0.3"
+-  resolved "https://registry.yarnpkg.com/lodash._basefor/-/lodash._basefor-3.0.3.tgz#7550b4e9218ef09fad24343b612021c79b4c20c2"
+-
+ lodash._basetostring@^3.0.0:
+   version "3.0.1"
+   resolved "https://registry.yarnpkg.com/lodash._basetostring/-/lodash._basetostring-3.0.1.tgz#d1861d877f824a52f669832dcaf3ee15566a07d5"
+@@ -4863,6 +4845,10 @@ lodash.escape@^3.0.0:
+   dependencies:
+     lodash._root "^3.0.0"
+ 
++lodash.escaperegexp@^4.1.2:
++  version "4.1.2"
++  resolved "https://registry.yarnpkg.com/lodash.escaperegexp/-/lodash.escaperegexp-4.1.2.tgz#64762c48618082518ac3df4ccf5d5886dae20347"
++
+ lodash.filter@^4.4.0:
+   version "4.6.0"
+   resolved "https://registry.yarnpkg.com/lodash.filter/-/lodash.filter-4.6.0.tgz#668b1d4981603ae1cc5a6fa760143e480b4c4ace"
+@@ -4883,14 +4869,6 @@ lodash.isarray@^3.0.0:
+   version "3.0.4"
+   resolved "https://registry.yarnpkg.com/lodash.isarray/-/lodash.isarray-3.0.4.tgz#79e4eb88c36a8122af86f844aa9bcd851b5fbb55"
+ 
+-lodash.isplainobject@^3.2.0:
+-  version "3.2.0"
+-  resolved "https://registry.yarnpkg.com/lodash.isplainobject/-/lodash.isplainobject-3.2.0.tgz#9a8238ae16b200432960cd7346512d0123fbf4c5"
+-  dependencies:
+-    lodash._basefor "^3.0.0"
+-    lodash.isarguments "^3.0.0"
+-    lodash.keysin "^3.0.0"
+-
+ lodash.isplainobject@^4.0.4:
+   version "4.0.6"
+   resolved "https://registry.yarnpkg.com/lodash.isplainobject/-/lodash.isplainobject-4.0.6.tgz#7c526a52d89b45c45cc690b88163be0497f550cb"
+@@ -4907,13 +4885,6 @@ lodash.keys@^3.0.0:
+     lodash.isarguments "^3.0.0"
+     lodash.isarray "^3.0.0"
+ 
+-lodash.keysin@^3.0.0:
+-  version "3.0.8"
+-  resolved "https://registry.yarnpkg.com/lodash.keysin/-/lodash.keysin-3.0.8.tgz#22c4493ebbedb1427962a54b445b2c8a767fb47f"
+-  dependencies:
+-    lodash.isarguments "^3.0.0"
+-    lodash.isarray "^3.0.0"
+-
+ lodash.map@^4.4.0:
+   version "4.6.0"
+   resolved "https://registry.yarnpkg.com/lodash.map/-/lodash.map-4.6.0.tgz#771ec7839e3473d9c4cde28b19394c3562f4f6d3"
+@@ -5028,10 +4999,6 @@ loud-rejection@^1.0.0:
+     currently-unhandled "^0.4.1"
+     signal-exit "^3.0.0"
+ 
+-lower-case@^1.1.1:
+-  version "1.1.4"
+-  resolved "https://registry.yarnpkg.com/lower-case/-/lower-case-1.1.4.tgz#9a2cabd1b9e8e0ae993a4bf7d5875c39c42e8eac"
+-
+ lru-cache@2:
+   version "2.7.3"
+   resolved "https://registry.yarnpkg.com/lru-cache/-/lru-cache-2.7.3.tgz#6d4524e8b955f95d4f5b58851ce21dd72fb4e952"
+@@ -5069,10 +5036,10 @@ mailparser@^0.6.1:
+     uue "^3.1.0"
+ 
+ make-dir@^1.0.0:
+-  version "1.0.0"
+-  resolved "https://registry.yarnpkg.com/make-dir/-/make-dir-1.0.0.tgz#97a011751e91dd87cfadef58832ebb04936de978"
++  version "1.1.0"
++  resolved "https://registry.yarnpkg.com/make-dir/-/make-dir-1.1.0.tgz#19b4369fe48c116f53c2af95ad102c0e39e85d51"
+   dependencies:
+-    pify "^2.3.0"
++    pify "^3.0.0"
+ 
+ map-cache@^0.2.0:
+   version "0.2.2"
+@@ -5189,7 +5156,11 @@ miller-rabin@^4.0.0:
+     bn.js "^4.0.0"
+     brorand "^1.0.1"
+ 
+-"mime-db@>= 1.29.0 < 2", mime-db@~1.30.0:
++"mime-db@>= 1.30.0 < 2":
++  version "1.31.0"
++  resolved "https://registry.yarnpkg.com/mime-db/-/mime-db-1.31.0.tgz#a49cd8f3ebf3ed1a482b60561d9105ad40ca74cb"
++
++mime-db@~1.30.0:
+   version "1.30.0"
+   resolved "https://registry.yarnpkg.com/mime-db/-/mime-db-1.30.0.tgz#74c643da2dd9d6a45399963465b26d5ca7d71f01"
+ 
+@@ -5203,11 +5174,11 @@ mime@1.3.4:
+   version "1.3.4"
+   resolved "https://registry.yarnpkg.com/mime/-/mime-1.3.4.tgz#115f9e3b6b3daf2959983cb38f149a2d40eb5d53"
+ 
+-mime@1.3.x, mime@^1.3.4:
++mime@1.3.x:
+   version "1.3.6"
+   resolved "https://registry.yarnpkg.com/mime/-/mime-1.3.6.tgz#591d84d3653a6b0b4a3b9df8de5aa8108e72e5e0"
+ 
+-mime@1.4.1:
++mime@1.4.1, mime@^1.3.4:
+   version "1.4.1"
+   resolved "https://registry.yarnpkg.com/mime/-/mime-1.4.1.tgz#121f9ebc49e3766f311a76e1fa1c8003c4b03aa6"
+ 
+@@ -5262,7 +5233,7 @@ minimatch@~0.2.11:
+     lru-cache "2"
+     sigmund "~1.0.0"
+ 
+-minimist@0.0.8, minimist@~0.0.1:
++minimist@0.0.8:
+   version "0.0.8"
+   resolved "https://registry.yarnpkg.com/minimist/-/minimist-0.0.8.tgz#857fcabfc3397d2625b8228262e86aa7a011b05d"
+ 
+@@ -5270,6 +5241,10 @@ minimist@^1.1.0, minimist@^1.1.3, minimist@^1.2.0:
+   version "1.2.0"
+   resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.0.tgz#a35008b20f41383eec1fb914f4cd5df79a264284"
+ 
++minimist@~0.0.1:
++  version "0.0.10"
++  resolved "https://registry.yarnpkg.com/minimist/-/minimist-0.0.10.tgz#de3f98543dbf96082be48ad1a0c7cda836301dcf"
++
+ mixin-object@^2.0.1:
+   version "2.0.1"
+   resolved "https://registry.yarnpkg.com/mixin-object/-/mixin-object-2.0.1.tgz#4fb949441dab182540f1fe035ba60e1947a5e57e"
+@@ -5307,8 +5282,8 @@ mocha@^2.4.5:
+     to-iso-string "0.0.2"
+ 
+ moment-timezone@^0.5.4:
+-  version "0.5.13"
+-  resolved "https://registry.yarnpkg.com/moment-timezone/-/moment-timezone-0.5.13.tgz#99ce5c7d827262eb0f1f702044177f60745d7b90"
++  version "0.5.14"
++  resolved "https://registry.yarnpkg.com/moment-timezone/-/moment-timezone-0.5.14.tgz#4eb38ff9538b80108ba467a458f3ed4268ccfcb1"
+   dependencies:
+     moment ">= 2.9.0"
+ 
+@@ -5316,7 +5291,7 @@ moment-timezone@^0.5.4:
+   version "2.19.1"
+   resolved "https://registry.yarnpkg.com/moment/-/moment-2.19.1.tgz#56da1a2d1cbf01d38b7e1afc31c10bcfa1929167"
+ 
+-ms@0.7.1, ms@^0.7.1:
++ms@0.7.1:
+   version "0.7.1"
+   resolved "https://registry.yarnpkg.com/ms/-/ms-0.7.1.tgz#9cd13c03adbff25b65effde7ce864ee952017098"
+ 
+@@ -5324,6 +5299,10 @@ ms@2.0.0:
+   version "2.0.0"
+   resolved "https://registry.yarnpkg.com/ms/-/ms-2.0.0.tgz#5608aeadfc00be6c2901df5f9861788de0d597c8"
+ 
++ms@^0.7.1:
++  version "0.7.3"
++  resolved "https://registry.yarnpkg.com/ms/-/ms-0.7.3.tgz#708155a5e44e33f5fd0fc53e81d0d40a91be1fff"
++
+ msgpack-lite@^0.1.20:
+   version "0.1.26"
+   resolved "https://registry.yarnpkg.com/msgpack-lite/-/msgpack-lite-0.1.26.tgz#dd3c50b26f059f25e7edee3644418358e2a9ad89"
+@@ -5462,9 +5441,10 @@ node-libs-browser@^2.0.0:
+     vm-browserify "0.0.4"
+ 
+ node-pre-gyp@^0.6.36, node-pre-gyp@~0.6.38:
+-  version "0.6.38"
+-  resolved "https://registry.yarnpkg.com/node-pre-gyp/-/node-pre-gyp-0.6.38.tgz#e92a20f83416415bb4086f6d1fb78b3da73d113d"
++  version "0.6.39"
++  resolved "https://registry.yarnpkg.com/node-pre-gyp/-/node-pre-gyp-0.6.39.tgz#c00e96860b23c0e1420ac7befc5044e1d78d8649"
+   dependencies:
++    detect-libc "^1.0.2"
+     hawk "3.1.3"
+     mkdirp "^0.5.1"
+     nopt "^4.0.1"
+@@ -5913,7 +5893,7 @@ picturefill@^3.0.2:
+   version "3.0.2"
+   resolved "https://registry.yarnpkg.com/picturefill/-/picturefill-3.0.2.tgz#fa3d35fffbef5ab5300fe2ad9dca8f2e36cba27b"
+ 
+-pify@^2.0.0, pify@^2.3.0:
++pify@^2.0.0:
+   version "2.3.0"
+   resolved "https://registry.yarnpkg.com/pify/-/pify-2.3.0.tgz#ed141a6ac043a849ea588498e7dca8b15330e90c"
+ 
+@@ -6200,10 +6180,10 @@ postcss@^5.0.10, postcss@^5.0.11, postcss@^5.0.12, postcss@^5.0.13, postcss@^5.0
+     supports-color "^3.2.3"
+ 
+ postcss@^6.0.1:
+-  version "6.0.13"
+-  resolved "https://registry.yarnpkg.com/postcss/-/postcss-6.0.13.tgz#b9ecab4ee00c89db3ec931145bd9590bbf3f125f"
++  version "6.0.14"
++  resolved "https://registry.yarnpkg.com/postcss/-/postcss-6.0.14.tgz#5534c72114739e75d0afcf017db853099f562885"
+   dependencies:
+-    chalk "^2.1.0"
++    chalk "^2.3.0"
+     source-map "^0.6.1"
+     supports-color "^4.4.0"
+ 
+@@ -6236,8 +6216,8 @@ pretty-hrtime@^1.0.0:
+   resolved "https://registry.yarnpkg.com/pretty-hrtime/-/pretty-hrtime-1.0.3.tgz#b7e3ea42435a4c9b2759d99e0f201eb195802ee1"
+ 
+ private@^0.1.6, private@^0.1.7:
+-  version "0.1.7"
+-  resolved "https://registry.yarnpkg.com/private/-/private-0.1.7.tgz#68ce5e8a1ef0a23bb570cc28537b5332aba63ef1"
++  version "0.1.8"
++  resolved "https://registry.yarnpkg.com/private/-/private-0.1.8.tgz#2381edb3689f7a53d653190060fcf822d2f368ff"
+ 
+ process-nextick-args@~1.0.6:
+   version "1.0.7"
+@@ -6324,8 +6304,8 @@ q@0.9.7:
+   resolved "https://registry.yarnpkg.com/q/-/q-0.9.7.tgz#4de2e6cb3b29088c9e4cbc03bf9d42fb96ce2f75"
+ 
+ q@^1.1.2:
+-  version "1.5.0"
+-  resolved "https://registry.yarnpkg.com/q/-/q-1.5.0.tgz#dd01bac9d06d30e6f219aecb8253ee9ebdc308f1"
++  version "1.5.1"
++  resolved "https://registry.yarnpkg.com/q/-/q-1.5.1.tgz#7e32f75b41381291d04611f1bf14109ac00651d7"
+ 
+ qr-image@^3.1.0:
+   version "3.2.0"
+@@ -6339,7 +6319,7 @@ qs@6.4.0, qs@~6.4.0:
+   version "6.4.0"
+   resolved "https://registry.yarnpkg.com/qs/-/qs-6.4.0.tgz#13e26d28ad6b0ffaa91312cd3bf708ed351e7233"
+ 
+-qs@6.5.1, qs@^6.1.0, qs@~6.5.1:
++qs@6.5.1, qs@^6.1.0, qs@^6.4.0, qs@~6.5.1:
+   version "6.5.1"
+   resolved "https://registry.yarnpkg.com/qs/-/qs-6.5.1.tgz#349cdf6eef89ec45c12d7d5eb3fc0c870343a6d8"
+ 
+@@ -6366,10 +6346,6 @@ querystring@0.2.0, querystring@^0.2.0:
+   version "0.2.0"
+   resolved "https://registry.yarnpkg.com/querystring/-/querystring-0.2.0.tgz#b209849203bb25df820da756e747005878521620"
+ 
+-ramda@^0.19.1:
+-  version "0.19.1"
+-  resolved "https://registry.yarnpkg.com/ramda/-/ramda-0.19.1.tgz#89c4ad697265ff6b1face9f286439e2520d6679c"
+-
+ random-bytes@~1.0.0:
+   version "1.0.0"
+   resolved "https://registry.yarnpkg.com/random-bytes/-/random-bytes-1.0.0.tgz#4f68a1dc0ae58bd3fb95848c30324db75d64360b"
+@@ -6381,17 +6357,24 @@ randomatic@^1.1.3:
+     is-number "^3.0.0"
+     kind-of "^4.0.0"
+ 
+-randombytes@^2.0.0, randombytes@^2.0.1:
++randombytes@^2.0.0, randombytes@^2.0.1, randombytes@^2.0.5:
+   version "2.0.5"
+   resolved "https://registry.yarnpkg.com/randombytes/-/randombytes-2.0.5.tgz#dc009a246b8d09a177b4b7a0ae77bc570f4b1b79"
+   dependencies:
+     safe-buffer "^5.1.0"
+ 
++randomfill@^1.0.3:
++  version "1.0.3"
++  resolved "https://registry.yarnpkg.com/randomfill/-/randomfill-1.0.3.tgz#b96b7df587f01dd91726c418f30553b1418e3d62"
++  dependencies:
++    randombytes "^2.0.5"
++    safe-buffer "^5.1.0"
++
+ range-parser@^1.0.3, range-parser@~1.2.0:
+   version "1.2.0"
+   resolved "https://registry.yarnpkg.com/range-parser/-/range-parser-1.2.0.tgz#f49be6b487894ddc40dcc94a322f611092e00d5e"
+ 
+-raw-body@2.3.2:
++raw-body@2.3.2, raw-body@^2.2.0:
+   version "2.3.2"
+   resolved "https://registry.yarnpkg.com/raw-body/-/raw-body-2.3.2.tgz#bcd60c77d3eb93cde0050295c3f379389bc88f89"
+   dependencies:
+@@ -6413,8 +6396,8 @@ raw-loader@^0.5.1:
+   resolved "https://registry.yarnpkg.com/raw-loader/-/raw-loader-0.5.1.tgz#0c3d0beaed8a01c966d9787bf778281252a979aa"
+ 
+ rc@^1.1.7:
+-  version "1.2.1"
+-  resolved "https://registry.yarnpkg.com/rc/-/rc-1.2.1.tgz#2e03e8e42ee450b8cb3dce65be1bf8974e1dfd95"
++  version "1.2.2"
++  resolved "https://registry.yarnpkg.com/rc/-/rc-1.2.2.tgz#d8ce9cb57e8d64d9c7badd9876c7c34cbe3c7077"
+   dependencies:
+     deep-extend "~0.4.0"
+     ini "~1.3.0"
+@@ -6461,7 +6444,7 @@ react-deep-force-update@^1.0.0:
+   version "1.1.1"
+   resolved "https://registry.yarnpkg.com/react-deep-force-update/-/react-deep-force-update-1.1.1.tgz#bcd31478027b64b3339f108921ab520b4313dc2c"
+ 
+-react-dom@15.4.2, react-dom@^15.0.1:
++react-dom@15.4.2:
+   version "15.4.2"
+   resolved "https://registry.yarnpkg.com/react-dom/-/react-dom-15.4.2.tgz#015363f05b0a1fd52ae9efdd3a0060d90695208f"
+   dependencies:
+@@ -6469,6 +6452,15 @@ react-dom@15.4.2, react-dom@^15.0.1:
+     loose-envify "^1.1.0"
+     object-assign "^4.1.0"
+ 
++react-dom@^15.0.1:
++  version "15.6.2"
++  resolved "https://registry.yarnpkg.com/react-dom/-/react-dom-15.6.2.tgz#41cfadf693b757faf2708443a1d1fd5a02bef730"
++  dependencies:
++    fbjs "^0.8.9"
++    loose-envify "^1.1.0"
++    object-assign "^4.1.0"
++    prop-types "^15.5.10"
++
+ react-dropzone@^3.7.3:
+   version "3.13.4"
+   resolved "https://registry.yarnpkg.com/react-dropzone/-/react-dropzone-3.13.4.tgz#84da26815c40339691c49b4544c2ef7a16912ccc"
+@@ -6533,8 +6525,8 @@ react-overlays@0.6.3:
+     warning "^2.1.0"
+ 
+ react-overlays@^0.7.0:
+-  version "0.7.2"
+-  resolved "https://registry.yarnpkg.com/react-overlays/-/react-overlays-0.7.2.tgz#03808f80d99dfadd93d67438c619aa55d07b3f80"
++  version "0.7.4"
++  resolved "https://registry.yarnpkg.com/react-overlays/-/react-overlays-0.7.4.tgz#ef2ec652c3444ab8aa014262b18f662068e56d5c"
+   dependencies:
+     classnames "^2.2.5"
+     dom-helpers "^3.2.1"
+@@ -6643,7 +6635,7 @@ react-transform-hmr@^1.0.4:
+     global "^4.3.0"
+     react-proxy "^1.1.7"
+ 
+-react@15.4.2, react@^15.0.1:
++react@15.4.2:
+   version "15.4.2"
+   resolved "https://registry.yarnpkg.com/react/-/react-15.4.2.tgz#41f7991b26185392ba9bae96c8889e7e018397ef"
+   dependencies:
+@@ -6651,6 +6643,16 @@ react@15.4.2, react@^15.0.1:
+     loose-envify "^1.1.0"
+     object-assign "^4.1.0"
+ 
++react@^15.0.1:
++  version "15.6.2"
++  resolved "https://registry.yarnpkg.com/react/-/react-15.6.2.tgz#dba0434ab439cfe82f108f0f511663908179aa72"
++  dependencies:
++    create-react-class "^15.6.0"
++    fbjs "^0.8.9"
++    loose-envify "^1.1.0"
++    object-assign "^4.1.0"
++    prop-types "^15.5.10"
++
+ read-pkg-up@^1.0.1:
+   version "1.0.1"
+   resolved "https://registry.yarnpkg.com/read-pkg-up/-/read-pkg-up-1.0.1.tgz#9d63c13276c065918d57f002a57f40a1b643fb02"
+@@ -6775,17 +6777,6 @@ reduce-function-call@^1.0.1:
+   dependencies:
+     balanced-match "^0.4.2"
+ 
+-reduce-reducers@^0.1.0:
+-  version "0.1.2"
+-  resolved "https://registry.yarnpkg.com/reduce-reducers/-/reduce-reducers-0.1.2.tgz#fa1b4718bc5292a71ddd1e5d839c9bea9770f14b"
+-
+-redux-actions@^0.9.1:
+-  version "0.9.1"
+-  resolved "https://registry.yarnpkg.com/redux-actions/-/redux-actions-0.9.1.tgz#a72767654bc21424c3df3f6240780ffa8872783c"
+-  dependencies:
+-    flux-standard-action "^0.6.0"
+-    reduce-reducers "^0.1.0"
+-
+ redux-form@5.3.4:
+   version "5.3.4"
+   resolved "https://registry.yarnpkg.com/redux-form/-/redux-form-5.3.4.tgz#0536ec71daf919fc6ec93c9b39a9581213715980"
+@@ -6796,16 +6787,6 @@ redux-form@5.3.4:
+     is-promise "^2.1.0"
+     react-lazy-cache "^3.0.1"
+ 
+-redux-modules@0.0.5:
+-  version "0.0.5"
+-  resolved "https://registry.yarnpkg.com/redux-modules/-/redux-modules-0.0.5.tgz#ab38e8c7bf52b41f04a2f140c48703a241cebd1f"
+-  dependencies:
+-    camel-case "^1.2.2"
+-    camelize "^1.0.0"
+-    immutable "^3.7.6"
+-    ramda "^0.19.1"
+-    redux-actions "^0.9.1"
+-
+ redux-saga@^0.9.5:
+   version "0.9.5"
+   resolved "https://registry.yarnpkg.com/redux-saga/-/redux-saga-0.9.5.tgz#f4bde5896e466932f758f86247b2fa6a4694ec2a"
+@@ -6849,10 +6830,6 @@ regex-cache@^0.4.2:
+   dependencies:
+     is-equal-shallow "^0.1.3"
+ 
+-regexp-quote@0.0.0:
+-  version "0.0.0"
+-  resolved "https://registry.yarnpkg.com/regexp-quote/-/regexp-quote-0.0.0.tgz#1e0f4650c862dcbfed54fd42b148e9bb1721fcf2"
+-
+ regexpu-core@^1.0.0:
+   version "1.0.0"
+   resolved "https://registry.yarnpkg.com/regexpu-core/-/regexpu-core-1.0.0.tgz#86a763f58ee4d7c2f6b102e4764050de7ed90c6b"
+@@ -7046,8 +7023,8 @@ resolve-from@^1.0.0:
+   resolved "https://registry.yarnpkg.com/resolve-from/-/resolve-from-1.0.1.tgz#26cbfe935d1aeeeabb29bc3fe5aeb01e93d44226"
+ 
+ resolve@^1.0.0, resolve@^1.1.6, resolve@^1.1.7, resolve@^1.2.0, resolve@^1.3.3:
+-  version "1.4.0"
+-  resolved "https://registry.yarnpkg.com/resolve/-/resolve-1.4.0.tgz#a75be01c53da25d934a98ebd0e4c4a7312f92a86"
++  version "1.5.0"
++  resolved "https://registry.yarnpkg.com/resolve/-/resolve-1.5.0.tgz#1f09acce796c9a762579f31b2c1cc4c3cddf9f36"
+   dependencies:
+     path-parse "^1.0.5"
+ 
+@@ -7059,11 +7036,11 @@ restore-cursor@^2.0.0:
+     signal-exit "^3.0.2"
+ 
+ retry-as-promised@^2.0.0:
+-  version "2.3.1"
+-  resolved "https://registry.yarnpkg.com/retry-as-promised/-/retry-as-promised-2.3.1.tgz#f75059183f9730771c09bad1eed57537931cbc9d"
++  version "2.3.2"
++  resolved "https://registry.yarnpkg.com/retry-as-promised/-/retry-as-promised-2.3.2.tgz#cd974ee4fd9b5fe03cbf31871ee48221c07737b7"
+   dependencies:
+     bluebird "^3.4.6"
+-    debug "^2.2.0"
++    debug "^2.6.9"
+ 
+ right-align@^0.1.1:
+   version "0.1.3"
+@@ -7112,16 +7089,21 @@ safe-buffer@~5.0.1:
+   version "5.0.1"
+   resolved "https://registry.yarnpkg.com/safe-buffer/-/safe-buffer-5.0.1.tgz#d263ca54696cd8a306b5ca6551e92de57918fbe7"
+ 
+-samsam@1.1.2, samsam@~1.1:
++samsam@1.1.2:
+   version "1.1.2"
+   resolved "https://registry.yarnpkg.com/samsam/-/samsam-1.1.2.tgz#bec11fdc83a9fda063401210e40176c3024d1567"
+ 
++samsam@~1.1:
++  version "1.1.3"
++  resolved "https://registry.yarnpkg.com/samsam/-/samsam-1.1.3.tgz#9f5087419b4d091f232571e7fa52e90b0f552621"
++
+ sanitize-html@^1.11.4:
+-  version "1.14.1"
+-  resolved "https://registry.yarnpkg.com/sanitize-html/-/sanitize-html-1.14.1.tgz#730ffa2249bdf18333effe45b286173c9c5ad0b8"
++  version "1.15.0"
++  resolved "https://registry.yarnpkg.com/sanitize-html/-/sanitize-html-1.15.0.tgz#d101a62c9fe0347486badc6cd6ed72daa0a82ced"
+   dependencies:
+     htmlparser2 "^3.9.0"
+-    regexp-quote "0.0.0"
++    lodash.escaperegexp "^4.1.2"
++    srcset "^1.0.0"
+     xtend "^4.0.0"
+ 
+ sass-graph@^2.1.1:
+@@ -7158,11 +7140,11 @@ scmp@0.0.3:
+   resolved "https://registry.yarnpkg.com/scmp/-/scmp-0.0.3.tgz#3648df2d7294641e7f78673ffc29681d9bad9073"
+ 
+ scroll-behavior@^0.9.3:
+-  version "0.9.3"
+-  resolved "https://registry.yarnpkg.com/scroll-behavior/-/scroll-behavior-0.9.3.tgz#e48bcc8af364f3f07176e8dbca3968bd5e71557b"
++  version "0.9.4"
++  resolved "https://registry.yarnpkg.com/scroll-behavior/-/scroll-behavior-0.9.4.tgz#73b4a0eae3e59c0b8f3b6fc1ff78f054a513e79c"
+   dependencies:
+-    dom-helpers "^3.0.0"
+-    invariant "^2.2.1"
++    dom-helpers "^3.2.1"
++    invariant "^2.2.2"
+ 
+ scss-tokenizer@^0.2.3:
+   version "0.2.3"
+@@ -7221,12 +7203,6 @@ sendgrid@^4.0.1:
+     mailparser "^0.6.1"
+     sendgrid-rest "^2.3.0"
+ 
+-sentence-case@^1.1.1:
+-  version "1.1.3"
+-  resolved "https://registry.yarnpkg.com/sentence-case/-/sentence-case-1.1.3.tgz#8034aafc2145772d3abe1509aa42c9e1042dc139"
+-  dependencies:
+-    lower-case "^1.1.1"
+-
+ sequelize-cli@^2.3.1:
+   version "2.8.0"
+   resolved "https://registry.yarnpkg.com/sequelize-cli/-/sequelize-cli-2.8.0.tgz#4304cce60e499169603f838dedbab421c9849e74"
+@@ -7378,8 +7354,8 @@ sntp@1.x.x:
+     hoek "2.x.x"
+ 
+ sntp@2.x.x:
+-  version "2.0.2"
+-  resolved "https://registry.yarnpkg.com/sntp/-/sntp-2.0.2.tgz#5064110f0af85f7cfdb7d6b67a40028ce52b4b2b"
++  version "2.1.0"
++  resolved "https://registry.yarnpkg.com/sntp/-/sntp-2.1.0.tgz#2c6cec14fedc2222739caf9b5c3d85d1cc5a2cc8"
+   dependencies:
+     hoek "4.x.x"
+ 
+@@ -7461,6 +7437,13 @@ sqlstring@2.3.0:
+   version "2.3.0"
+   resolved "https://registry.yarnpkg.com/sqlstring/-/sqlstring-2.3.0.tgz#525b8a4fd26d6f71aa61e822a6caf976d31ad2a8"
+ 
++srcset@^1.0.0:
++  version "1.0.0"
++  resolved "https://registry.yarnpkg.com/srcset/-/srcset-1.0.0.tgz#a5669de12b42f3b1d5e83ed03c71046fc48f41ef"
++  dependencies:
++    array-uniq "^1.0.2"
++    number-is-nan "^1.0.0"
++
+ sshpk@^1.7.0:
+   version "1.13.1"
+   resolved "https://registry.yarnpkg.com/sshpk/-/sshpk-1.13.1.tgz#512df6da6287144316dc4c18fe1cf1d940739be3"
+@@ -7475,7 +7458,11 @@ sshpk@^1.7.0:
+     jsbn "~0.1.0"
+     tweetnacl "~0.14.0"
+ 
+-statuses@1, "statuses@>= 1.3.1 < 2", statuses@^1.2.0, statuses@~1.3.1:
++statuses@1, "statuses@>= 1.3.1 < 2", statuses@^1.2.0:
++  version "1.4.0"
++  resolved "https://registry.yarnpkg.com/statuses/-/statuses-1.4.0.tgz#bb73d446da2796106efcc1b601a253d6c46bd087"
++
++statuses@~1.3.1:
+   version "1.3.1"
+   resolved "https://registry.yarnpkg.com/statuses/-/statuses-1.3.1.tgz#faf51b9eb74aaef3b3acf4ad5f61abf24cb7b93e"
+ 
+@@ -7657,8 +7644,8 @@ supports-color@^3.2.3:
+     has-flag "^1.0.0"
+ 
+ supports-color@^4.0.0, supports-color@^4.2.1, supports-color@^4.4.0:
+-  version "4.4.0"
+-  resolved "https://registry.yarnpkg.com/supports-color/-/supports-color-4.4.0.tgz#883f7ddabc165142b2a61427f3352ded195d1a3e"
++  version "4.5.0"
++  resolved "https://registry.yarnpkg.com/supports-color/-/supports-color-4.5.0.tgz#be7a0de484dec5c5cddf8b3d59125044912f635b"
+   dependencies:
+     has-flag "^2.0.0"
+ 
+@@ -7728,8 +7715,8 @@ tapable@^0.2.7:
+   resolved "https://registry.yarnpkg.com/tapable/-/tapable-0.2.8.tgz#99372a5c999bf2df160afc0d74bed4f47948cd22"
+ 
+ tar-pack@^3.4.0:
+-  version "3.4.0"
+-  resolved "https://registry.yarnpkg.com/tar-pack/-/tar-pack-3.4.0.tgz#23be2d7f671a8339376cbdb0b8fe3fdebf317984"
++  version "3.4.1"
++  resolved "https://registry.yarnpkg.com/tar-pack/-/tar-pack-3.4.1.tgz#e1dbc03a9b9d3ba07e896ad027317eb679a10a1f"
+   dependencies:
+     debug "^2.2.0"
+     fstream "^1.0.10"
+@@ -7941,7 +7928,7 @@ type-detect@^1.0.0:
+   version "1.0.0"
+   resolved "https://registry.yarnpkg.com/type-detect/-/type-detect-1.0.0.tgz#762217cc06db258ec48908a1298e8b95121e8ea2"
+ 
+-type-is@^1.5.5, type-is@~1.6.15, type-is@~1.6.6:
++type-is@^1.5.5, type-is@^1.6.14, type-is@~1.6.15, type-is@~1.6.6:
+   version "1.6.15"
+   resolved "https://registry.yarnpkg.com/type-is/-/type-is-1.6.15.tgz#cab10fb4909e441c82842eafe1ad646c81804410"
+   dependencies:
+@@ -8068,10 +8055,6 @@ unpipe@1.0.0, unpipe@~1.0.0:
+   version "1.0.0"
+   resolved "https://registry.yarnpkg.com/unpipe/-/unpipe-1.0.0.tgz#b2bf4ee8514aae6165b4817829d21b2ef49904ec"
+ 
+-upper-case@^1.1.1:
+-  version "1.1.3"
+-  resolved "https://registry.yarnpkg.com/upper-case/-/upper-case-1.1.3.tgz#f6b4501c2ec4cdd26ba78be7222961de77621598"
+-
+ url-loader@^0.5.9:
+   version "0.5.9"
+   resolved "https://registry.yarnpkg.com/url-loader/-/url-loader-0.5.9.tgz#cc8fea82c7b906e7777019250869e569e995c295"
+@@ -8206,8 +8189,8 @@ watchpack@^1.4.0:
+     graceful-fs "^4.1.2"
+ 
+ web-push@^3.2.1:
+-  version "3.2.3"
+-  resolved "https://registry.yarnpkg.com/web-push/-/web-push-3.2.3.tgz#269492aa06d1481a8222425baf4c68fe23fcbefc"
++  version "3.2.4"
++  resolved "https://registry.yarnpkg.com/web-push/-/web-push-3.2.4.tgz#3b603489777f215853e4e4f3d8664dcb861dd2c1"
+   dependencies:
+     asn1.js "^4.8.1"
+     http_ece "^0.5.2"
+@@ -8250,8 +8233,8 @@ webpack-dev-middleware@^1.10.0, webpack-dev-middleware@^1.12.0:
+     time-stamp "^2.0.0"
+ 
+ webpack-hot-middleware@2.x:
+-  version "2.19.1"
+-  resolved "https://registry.yarnpkg.com/webpack-hot-middleware/-/webpack-hot-middleware-2.19.1.tgz#5db32c31c955c1ead114d37c7519ea554da0d405"
++  version "2.20.0"
++  resolved "https://registry.yarnpkg.com/webpack-hot-middleware/-/webpack-hot-middleware-2.20.0.tgz#cb896d837758b6408fe0afeeafdc0e5316b15319"
+   dependencies:
+     ansi-html "0.0.7"
+     html-entities "^1.2.0"
+@@ -8278,8 +8261,8 @@ webpack-sources@^1.0.1:
+     source-map "~0.5.3"
+ 
+ webpack@^3.5.5:
+-  version "3.7.1"
+-  resolved "https://registry.yarnpkg.com/webpack/-/webpack-3.7.1.tgz#6046b5c415ff7df7a0dc54c5b6b86098e8b952da"
++  version "3.8.1"
++  resolved "https://registry.yarnpkg.com/webpack/-/webpack-3.8.1.tgz#b16968a81100abe61608b0153c9159ef8bb2bd83"
+   dependencies:
+     acorn "^5.0.0"
+     acorn-dynamic-import "^2.0.0"
+@@ -8305,25 +8288,29 @@ webpack@^3.5.5:
+     yargs "^8.0.2"
+ 
+ websocket@^1.0.22:
+-  version "1.0.24"
+-  resolved "https://registry.yarnpkg.com/websocket/-/websocket-1.0.24.tgz#74903e75f2545b6b2e1de1425bc1c905917a1890"
++  version "1.0.25"
++  resolved "https://registry.yarnpkg.com/websocket/-/websocket-1.0.25.tgz#998ec790f0a3eacb8b08b50a4350026692a11958"
+   dependencies:
+     debug "^2.2.0"
+     nan "^2.3.3"
+     typedarray-to-buffer "^3.1.2"
+     yaeti "^0.0.6"
+ 
+-what-input@^4.0.3:
++what-input@^4.0.3, what-input@^4.1.3:
+   version "4.3.1"
+   resolved "https://registry.yarnpkg.com/what-input/-/what-input-4.3.1.tgz#b8ea7554ba1d9171887c4c6addf28185fec3d31d"
+ 
+ whatwg-encoding@^1.0.1:
+-  version "1.0.1"
+-  resolved "https://registry.yarnpkg.com/whatwg-encoding/-/whatwg-encoding-1.0.1.tgz#3c6c451a198ee7aec55b1ec61d0920c67801a5f4"
++  version "1.0.3"
++  resolved "https://registry.yarnpkg.com/whatwg-encoding/-/whatwg-encoding-1.0.3.tgz#57c235bc8657e914d24e1a397d3c82daee0a6ba3"
+   dependencies:
+-    iconv-lite "0.4.13"
++    iconv-lite "0.4.19"
+ 
+-whatwg-fetch@>=0.10.0, whatwg-fetch@^0.11.1:
++whatwg-fetch@>=0.10.0:
++  version "2.0.3"
++  resolved "https://registry.yarnpkg.com/whatwg-fetch/-/whatwg-fetch-2.0.3.tgz#9c84ec2dcf68187ff00bc64e1274b442176e1c84"
++
++whatwg-fetch@^0.11.1:
+   version "0.11.1"
+   resolved "https://registry.yarnpkg.com/whatwg-fetch/-/whatwg-fetch-0.11.1.tgz#6d3ded245fdd97cd728e0e2587b54b733949e663"
+ 
+@@ -8346,7 +8333,13 @@ which-module@^2.0.0:
+   version "2.0.0"
+   resolved "https://registry.yarnpkg.com/which-module/-/which-module-2.0.0.tgz#d9ef07dce77b9902b8a3a8fa4b31c3e3f7e6e87a"
+ 
+-which@1, which@1.2.x, which@^1.2.12, which@^1.2.9:
++which@1, which@^1.2.12, which@^1.2.9:
++  version "1.3.0"
++  resolved "https://registry.yarnpkg.com/which/-/which-1.3.0.tgz#ff04bdfc010ee547d780bec38e1ac1c2777d253a"
++  dependencies:
++    isexe "^2.0.0"
++
++which@1.2.x:
+   version "1.2.14"
+   resolved "https://registry.yarnpkg.com/which/-/which-1.2.14.tgz#9a87c4378f03e827cecaf1acdf56c736c01c14e5"
+   dependencies:

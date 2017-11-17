@@ -153,21 +153,10 @@ class CommentImpl extends React.Component {
     }
 
     componentDidMount() {
-        // Jump to comment via hash (note: comment element's id has a hash(#) in it)
         if (window.location.hash == this.props.anchor_link) {
-            const comment_el = document.getElementById(this.props.anchor_link)
-            if (comment_el) {
-                comment_el.scrollIntoView(true)
-                const scrollingEl = document.scrollingElement || document.documentElement;
-                scrollingEl.scrollTop -= 100;
-                this.setState({highlight: true});
-            }
+            this.setState({highlight: true}); // eslint-disable-line react/no-did-mount-set-state
         }
     }
-
-    //componentWillReceiveProps(np) {
-    //    this._checkHide(np);
-    //}
 
     /**
      * - `hide` is based on author reputation, and will hide the entire post on initial render.
@@ -349,10 +338,10 @@ class CommentImpl extends React.Component {
         return (
           <div className={commentClasses.join(' ')} id={anchor_link} itemScope itemType="http://schema.org/comment">
             {depth_indicator}
-            <div className="Comment__Userpic show-for-medium">
-              <Userpic account={comment.author} />
-            </div>
             <div className={innerCommentClass}>
+                <div className="Comment__Userpic show-for-medium">
+                  <Userpic account={comment.author} />
+                </div>
               <div className="Comment__header">
                 <div className="Comment__header_collapse">
                   <Voting post={post} flag />

@@ -2,11 +2,12 @@
 /*global $STM_csrf, $STM_Config */
 import React from 'react';
 import {connect} from 'react-redux';
+import Progress from 'react-foundation-components/lib/global/progress-bar';
+import { Link } from 'react-router';
+import classNames from 'classnames';
 import {api} from 'steem';
 import {validate_account_name} from 'app/utils/ChainValidation';
 import runTests from 'app/utils/BrowserTests';
-import Progress from 'react-foundation-components/lib/global/progress-bar';
-import { Link } from 'react-router';
 
 class PickAccount extends React.Component {
 
@@ -98,8 +99,7 @@ class PickAccount extends React.Component {
 
         const {loggedIn, logout, offchainUser, serverBusy} = this.props;
         const submit_btn_disabled = loading || !name || name_error;
-        const submit_btn_class = 'action btn-continue' + (submit_btn_disabled ? ' disabled' : '');
-
+        const submit_btn_class = classNames('button action', {disabled: submit_btn_disabled});
         const account_status = offchainUser ? offchainUser.get('account_status') : null;
 
         if (serverBusy || $STM_Config.disable_signups) {

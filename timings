@@ -1,0 +1,8 @@
+500 ssr 500 client: 40.29s 41.75s cold 36.68s 38.02s hot
+100 server 500 clietn 27 29s cold 26 27 hot
+
+5 server 500 client 22 25 cold 21 23 hot 24 35 cold
+
+
+testnet:
+
