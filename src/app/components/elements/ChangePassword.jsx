@@ -1,5 +1,6 @@
 /* eslint react/prop-types: 0 */
 import React from 'react'
+import { reduxForm, Field } from 'redux-form/immutable' // @deprecated, instead use: app/utils/ReactForm.js
 import LoadingIndicator from 'app/components/elements/LoadingIndicator'
 import {validate_account_name} from 'app/utils/ChainValidation'
 import {cleanReduxInput} from 'app/utils/ReduxForms'
@@ -9,6 +10,14 @@ import {PrivateKey, PublicKey, key_utils} from 'steem/lib/auth/ecc';
 import {api} from 'steem';
 
 const {string, oneOf} = React.PropTypes
+
+const renderInput = field =>
+  <div>
+    <input {...field.input} type={field.type} disabled={field.loading} />
+    {field.meta.touched &&
+     field.meta.error &&
+     <span className="error">{field.meta.error}</span>}
+  </div>
 
 class ChangePassword extends React.Component {
     static propTypes = {
@@ -91,7 +100,6 @@ class ChangePassword extends React.Component {
         const {generated, loading, error} = this.state
         const {username, authType, priorAuthKey, /*enable2fa*/} = this.props
         const {handleSubmit, submitting, onClose} = this.props // form stuff
-        const {password, confirmPassword, confirmCheck, confirmSaved /*twofa*/} = this.props.fields
 
         if(authType && !priorAuthKey)
             console.error('Missing priorAuthKey')
@@ -143,9 +151,12 @@ class ChangePassword extends React.Component {
                         <div className="float-right"><a href="/recover_account_step_1">{tt('g.recover_password')}</a></div>
                         {tt('g.current_password')}
                         <br />
-                        <input {...cleanReduxInput(password)} type="password" disabled={loading} />
+                        <Field
+                            name="password"
+                            type="password"
+                            loading={loading}
+                            component={renderInput} />
                     </label>
-                    {password.touched && password.error && <div className="error">{password.error}</div>}
 
                     <br></br>
 
@@ -171,17 +182,32 @@ class ChangePassword extends React.Component {
                     <label>
                         {tt('g.re_enter_generate_password')}
                         <br />
-                        <input {...cleanReduxInput(confirmPassword)} type="password" disabled={loading} />
+                        <Field
+                            name="confirmPassword"
+                            type="password"
+                            loading={loading}
+                            component={renderInput} />
                     </label>
-                    {confirmPassword.touched && confirmPassword.error && <div className="error">{confirmPassword.error}</div>}
 
                     <br />
 
-                    <label><input {...cleanReduxInput(confirmCheck)} type="checkbox" /> {tt('g.understand_that_APP_NAME_cannot_recover_password', {APP_NAME})}</label>
-                    {confirmCheck.touched && confirmCheck.error && <div className="error">{confirmCheck.error}</div>}
+                    <label>
+                        <Field
+                            name="confirmCheck"
+                            type="checkbox"
+                            loading={loading}
+                            component={renderInput} />
+                        {tt('g.understand_that_APP_NAME_cannot_recover_password', {APP_NAME})}
+                    </label>
 
-                    <label><input {...cleanReduxInput(confirmSaved)} type="checkbox" />{tt('g.i_saved_password')}</label>
-                    {confirmSaved.touched && confirmSaved.error && <div className="error">{confirmSaved.error}</div>}
+                    <label>
+                        <Field
+                            name="confirmSaved"
+                            type="checkbox"
+                            loading={loading}
+                            component={renderInput} />
+                        {tt('g.i_saved_password')}
+                    </label>
                     <br />
                     {loading && <div><LoadingIndicator type="circle" /></div>}
                     {!loading && <div className="ChangePassword__btn-container">
@@ -221,9 +247,8 @@ const keyValidate = (values) => ({
     confirmSaved: ! values.confirmSaved ? tt('g.required') : null,
 })
 
-import {reduxForm} from 'redux-form' // @deprecated, instead use: app/utils/ReactForm.js
 export default reduxForm(
-    { form: 'changePassword', fields: ['password', 'confirmPassword', 'confirmCheck', 'confirmSaved', 'twofa'] },
+    { form: 'changePassword' },
     // mapStateToProps
     (state, ownProps) => {
         const {authType} = ownProps
