@@ -39,14 +39,14 @@ const PERFORMANCE_TEST = process.env.PERFORMANCE_TEST;
 let get_state_perf,
     get_content_perf = false;
 if (PERFORMANCE_TEST) {
-    let uri = __dirname.replace('src/shared', '');
+    let uri = `${__dirname}/../../`;
     //.default because require
     get_state_perf = require(uri +
         PERFORMANCE_TEST +
-        '/mockdata/api_calls/get_state').default;
+        '/mockdata/api_calls/get_state');
     get_content_perf = require(uri +
         PERFORMANCE_TEST +
-        '/mockdata/api_calls/get_content').default;
+        '/mockdata/api_calls/get_content');
 }
 
 const calcOffsetRoot = startEl => {
